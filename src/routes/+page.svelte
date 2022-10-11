@@ -5,6 +5,13 @@
 		console.log('posting...')
 		parent.postMessage('hello', '*')
 		console.log('posted')
+
+		addEventListener('message', e => {
+			console.log('received');
+			var key = e.message ? "message" : "data";
+			var data = e[key];
+			console.log(e, key, data)
+		}, false);
 	});
 </script>
 
