@@ -2,7 +2,9 @@
 	import {onMount} from 'svelte';
 
 	onMount( () => {
+		console.log('posting...')
 		window.postMessage('hello', '*')
+		console.log('posted')
 	});
 </script>
 
