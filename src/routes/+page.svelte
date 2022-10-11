@@ -3,7 +3,7 @@
 
 	onMount( () => {
 		console.log('posting...')
-		window.postMessage('hello', '*')
+		parent.postMessage('hello', '*')
 		console.log('posted')
 	});
 </script>
