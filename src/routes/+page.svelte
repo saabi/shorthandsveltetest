@@ -18,7 +18,7 @@
 
 	onMount( () => {
 		console.log('posting...')
-		parent.postMessage('hello', '*')
+		globalThis.parent?.postMessage('hello', '*')
 		console.log('posted')
 
 		addEventListener(
@@ -33,7 +33,7 @@
 		);
 	});
 
-	$: parent.postMessage({
+	$: globalThis.parent?.postMessage({
 		message: 'setURL',
 		source: 'slide1',
 		url: URLs[datapoint.i][datapoint.j]
