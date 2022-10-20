@@ -57,9 +57,6 @@
 		]}
 		on:pointhovered={({detail}) => datapoint = detail}
 	/>
-	{#if datapoint}
-		<pre>{JSON.stringify(datapoint, null, 2)}</pre>
-	{/if}
 </div>
 
 <style>
