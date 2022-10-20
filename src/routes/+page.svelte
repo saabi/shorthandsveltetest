@@ -8,9 +8,9 @@
 	const chart3 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_magnitude_vs_growth.html';
 
 	const URLs = [
-		[[chart1, chart2, chart3, chart1]],
-		[[chart2, chart3, chart1, chart2]],
-		[[chart3, chart1, chart2, chart3]],
+		[chart1, chart2, chart3, chart1],
+		[chart2, chart3, chart1, chart2],
+		[chart3, chart1, chart2, chart3],
 	];
 
 	let message;
@@ -38,6 +38,8 @@
 		source: 'slide1',
 		url: URLs[datapoint.i][datapoint.j]
 	}, '*')
+
+	$: datapoint && console.log(datapoint, URLs[datapoint.i][datapoint.j])
 </script>
 
 <div>
