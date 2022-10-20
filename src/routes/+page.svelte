@@ -33,7 +33,7 @@
 		);
 	});
 
-	$: globalThis.parent?.postMessage({
+	$: datapoint && globalThis.parent?.postMessage({
 		message: 'setURL',
 		source: 'slide1',
 		url: URLs[datapoint.i][datapoint.j]
