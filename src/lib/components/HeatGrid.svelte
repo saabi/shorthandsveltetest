@@ -33,6 +33,7 @@
 				{@const onEnter = () => onPointHovered({columnName, rowName, value})}
 				{@const onExit = () => onPointHovered()}
 				<td>
+					<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
 					<div
 						class='datapoint'
 						on:blur={onExit}
@@ -40,6 +41,7 @@
 						on:mouseover={onEnter}
 						on:mouseout={onExit}
 						style='background: {colorMap[value]}'
+						tabindex=0
 					/>
 				</td>
 			{/each}
