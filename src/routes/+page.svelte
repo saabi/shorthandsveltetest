@@ -3,6 +3,16 @@
 
 	import HeatGrid from '$lib/components/HeatGrid.svelte';
 
+	const chart1 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/v2022_10_14_Heat_map.html';
+	const chart2 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_bar_chart.html';
+	const chart3 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_magnitude_vs_growth.html';
+
+	const URLs = [
+		[[chart1, chart2, chart3, chart1]],
+		[[chart2, chart3, chart1, chart2]],
+		[[chart3, chart1, chart2, chart3]],
+	];
+
 	let message;
 	let datapoint
 
@@ -22,6 +32,12 @@
 			false
 		);
 	});
+
+	$: parent.postMessage({
+		message: 'setURL',
+		source: 'slide1',
+		url: URLs[datapoint.i][datapoint.j]
+	}, '*')
 </script>
 
 <div>

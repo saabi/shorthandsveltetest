@@ -30,7 +30,12 @@
 			<td>{rowName}</td>
 			{#each columnHeaders as columnName, j}
 				{@const value = data[i][j]}
-				{@const onEnter = () => onPointHovered({columnName, rowName, value})}
+				{@const onEnter = () => onPointHovered({
+					i, j,
+					columnName,
+					rowName,
+					value
+				})}
 				{@const onExit = () => onPointHovered()}
 				<td>
 					<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
