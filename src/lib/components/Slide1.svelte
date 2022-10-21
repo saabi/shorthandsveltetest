@@ -1,7 +1,7 @@
 <script>
 	import {onMount} from 'svelte';
 
-	import HeatGrid from '$lib/components/HeatGrid.svelte';
+	import HeatGrid from './HeatGrid.svelte';
 
 	const chart1 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/v2022_10_14_Heat_map.html';
 	const chart2 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_bar_chart.html';
