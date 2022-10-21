@@ -13,7 +13,7 @@ const production = !process.env.ROLLUP_WATCH
 //
 const emitCss = false;
 
-const cmp = 'HeatGrid';
+const cmp = 'Slide1';
 
 export default {
 	// our widget as input
