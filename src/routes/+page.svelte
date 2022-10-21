@@ -3,9 +3,9 @@
 
 	import HeatGrid from '$lib/components/HeatGrid.svelte';
 
-	const chart1 = '/charts/v2022_10_14_Heat_map.html';
-	const chart2 = '/charts/test_bar_chart.html';
-	const chart3 = '/charts/test_magnitude_vs_growth.html';
+	const chart1 = 'https://shorthandsveltetest.vercel.app/charts/v2022_10_14_Heat_map.html';
+	const chart2 = 'https://shorthandsveltetest.vercel.app/charts/test_bar_chart.html';
+	const chart3 = 'https://shorthandsveltetest.vercel.app/charts/test_magnitude_vs_growth.html';
 
 	const URLs = [
 		[chart1, chart2, chart3, chart1],
