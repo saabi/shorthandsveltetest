@@ -82,6 +82,7 @@
 		height: 150px;
 		display: grid;
 		grid-template-columns: 50% 50%;
+		height: fit-content;
 	}
 	pre {
 		background: #eee;
