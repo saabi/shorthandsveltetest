@@ -54,7 +54,7 @@
 	$: datapoint && (spec = URLs[datapoint.i][datapoint.j])
 </script>
 
-<div>
+<div class='heatgrid'>
 	<HeatGrid
 		columnHeaders={['col1', 'col2', 'col3', 'col4']}
 		rowHeaders={['row 1', 'row 2', 'row 3', 'row 4', 'row 5', 'row 6', 'row 7', 'row 8', 'row 9', 'row 10']}
@@ -79,7 +79,10 @@
 		on:pointhovered={({detail}) => datapoint = detail}
 		useClick
 	/>
-	{#if spec}
+</div>
+
+{#if spec}
+	<div class='banner'>
 		<Banner
 			on:close={() => spec = null}
 		>
@@ -87,15 +90,24 @@
 				{spec}
 			/>
 		</Banner>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <style>
-	div {
+	.heatgrid {
 		font-family: sans-serif;
 		width: 800px;
 		display: grid;
 		grid-template-columns: 50% 50%;
 		align-items: flex-start;
+	}
+
+	.banner {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 10000;
 	}
 </style>
