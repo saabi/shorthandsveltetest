@@ -5,6 +5,7 @@
 	export let rowHeaders;
 	export let columnHeaders;
 	export let colorMap;
+	export let useClick;
 
 	const dispatch = createEventDispatcher();
 
@@ -38,16 +39,27 @@
 				})}
 				{@const onExit = () => onPointHovered()}
 				<td>
-					<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-					<div
-						class='datapoint'
-						on:blur={onExit}
-						on:focus={onEnter}
-						on:mouseover={onEnter}
-						on:mouseout={onExit}
-						style='background: {colorMap[value]}'
-						tabindex=0
-					/>
+					{#if useClick}
+						<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+						<div
+							class='datapoint'
+							on:click={onEnter}
+							on:keydown={onEnter}
+							style='background: {colorMap[value]}'
+							tabindex=0
+						/>
+					{:else}
+						<!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+						<div
+							class='datapoint'
+							on:blur={onExit}
+							on:focus={onEnter}
+							on:mouseover={onEnter}
+							on:mouseout={onExit}
+							style='background: {colorMap[value]}'
+							tabindex=0
+						/>
+					{/if}
 				</td>
 			{/each}
 		</tr>

@@ -20,6 +20,8 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@svizzle/dom": "^0.7.0",
+		"@svizzle/ui": "^0.8.0",
 		"rollup": "^3.2.3",
 		"rollup-plugin-svelte": "^7.1.0",
 		"svelte-vega": "^1.1.1"

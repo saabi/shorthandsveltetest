@@ -1,4 +1,10 @@
 function noop$5() { }
+function assign(tar, src) {
+    // @ts-ignore
+    for (const k in src)
+        tar[k] = src[k];
+    return tar;
+}
 function run$1(fn) {
     return fn();
 }
@@ -16,6 +22,59 @@ function safe_not_equal(a, b) {
 }
 function is_empty(obj) {
     return Object.keys(obj).length === 0;
+}
+function subscribe(store, ...callbacks) {
+    if (store == null) {
+        return noop$5;
+    }
+    const unsub = store.subscribe(...callbacks);
+    return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+}
+function create_slot(definition, ctx, $$scope, fn) {
+    if (definition) {
+        const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
+        return definition[0](slot_ctx);
+    }
+}
+function get_slot_context(definition, ctx, $$scope, fn) {
+    return definition[1] && fn
+        ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+        : $$scope.ctx;
+}
+function get_slot_changes(definition, $$scope, dirty, fn) {
+    if (definition[2] && fn) {
+        const lets = definition[2](fn(dirty));
+        if ($$scope.dirty === undefined) {
+            return lets;
+        }
+        if (typeof lets === 'object') {
+            const merged = [];
+            const len = Math.max($$scope.dirty.length, lets.length);
+            for (let i = 0; i < len; i += 1) {
+                merged[i] = $$scope.dirty[i] | lets[i];
+            }
+            return merged;
+        }
+        return $$scope.dirty | lets;
+    }
+    return $$scope.dirty;
+}
+function update_slot_base(slot, slot_definition, ctx, $$scope, slot_changes, get_slot_context_fn) {
+    if (slot_changes) {
+        const slot_context = get_slot_context(slot_definition, ctx, $$scope, get_slot_context_fn);
+        slot.p(slot_context, slot_changes);
+    }
+}
+function get_all_dirty_from_scope($$scope) {
+    if ($$scope.ctx.length > 32) {
+        const dirty = [];
+        const length = $$scope.ctx.length / 32;
+        for (let i = 0; i < length; i++) {
+            dirty[i] = -1;
+        }
+        return dirty;
+    }
+    return -1;
 }
 function append(target, node) {
     target.appendChild(node);
@@ -67,6 +126,13 @@ function listen(node, event, handler, options) {
     node.addEventListener(event, handler, options);
     return () => node.removeEventListener(event, handler, options);
 }
+function stop_propagation(fn) {
+    return function (event) {
+        event.stopPropagation();
+        // @ts-ignore
+        return fn.call(this, event);
+    };
+}
 function attr$6(node, attribute, value) {
     if (value == null)
         node.removeAttribute(attribute);
@@ -88,6 +154,9 @@ function set_style(node, key, value, important) {
     else {
         node.style.setProperty(key, value, important ? 'important' : '');
     }
+}
+function toggle_class(element, name, toggle) {
+    element.classList[toggle ? 'add' : 'remove'](name);
 }
 function custom_event(type, detail, { bubbles = false, cancelable = false } = {}) {
     const e = document.createEvent('CustomEvent');
@@ -1415,7 +1484,7 @@ function field$1 (field, name, opt) {
 }
 
 const id = field$1('id');
-const identity$6 = accessor(_ => _, [], 'identity');
+const identity$7 = accessor(_ => _, [], 'identity');
 const zero$4 = accessor(() => 0, [], 'zero');
 const one$2 = accessor(() => 1, [], 'one');
 const truthy = accessor(() => true, [], 'true');
@@ -1559,7 +1628,7 @@ function pan(domain, delta, lift, ground) {
 }
 
 function panLinear(domain, delta) {
-  return pan(domain, delta, toNumber, identity$6);
+  return pan(domain, delta, toNumber, identity$7);
 }
 function panLog(domain, delta) {
   var sign = Math.sign(domain[0]);
@@ -1580,7 +1649,7 @@ function zoom$2(domain, anchor, scale, lift, ground) {
 }
 
 function zoomLinear(domain, anchor, scale) {
-  return zoom$2(domain, anchor, scale, toNumber, identity$6);
+  return zoom$2(domain, anchor, scale, toNumber, identity$7);
 }
 function zoomLog(domain, anchor, scale) {
   const sign = Math.sign(domain[0]);
@@ -2312,12 +2381,12 @@ function dsvFormat(delimiter) {
   };
 }
 
-function identity$5(x) {
+function identity$6(x) {
   return x;
 }
 
 function transform$3(transform) {
-  if (transform == null) return identity$5;
+  if (transform == null) return identity$6;
   var x0,
       y0,
       kx = transform.scale[0],
@@ -3166,19 +3235,19 @@ var formatTypes = {
   "x": (x) => Math.round(x).toString(16)
 };
 
-function identity$4(x) {
+function identity$5(x) {
   return x;
 }
 
-var map$1 = Array.prototype.map,
+var map$2 = Array.prototype.map,
     prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
 
 function formatLocale$1(locale) {
-  var group = locale.grouping === undefined || locale.thousands === undefined ? identity$4 : formatGroup(map$1.call(locale.grouping, Number), locale.thousands + ""),
+  var group = locale.grouping === undefined || locale.thousands === undefined ? identity$5 : formatGroup(map$2.call(locale.grouping, Number), locale.thousands + ""),
       currencyPrefix = locale.currency === undefined ? "" : locale.currency[0] + "",
       currencySuffix = locale.currency === undefined ? "" : locale.currency[1] + "",
       decimal = locale.decimal === undefined ? "." : locale.decimal + "",
-      numerals = locale.numerals === undefined ? identity$4 : formatNumerals(map$1.call(locale.numerals, String)),
+      numerals = locale.numerals === undefined ? identity$5 : formatNumerals(map$2.call(locale.numerals, String)),
       percent = locale.percent === undefined ? "%" : locale.percent + "",
       minus = locale.minus === undefined ? "−" : locale.minus + "",
       nan = locale.nan === undefined ? "NaN" : locale.nan + "";
@@ -5132,7 +5201,7 @@ const typeParsers = {
   number: toNumber,
   date: toDate,
   string: toString,
-  unknown: identity$6
+  unknown: identity$7
 };
 const typeTests = [isBoolean$1, isInteger, isNumber, isDate];
 const typeList = ['boolean', 'integer', 'number', 'date'];
@@ -5188,7 +5257,7 @@ function isBuffer(_) {
 }
 
 function json(data, format) {
-  const prop = format && format.property ? field$1(format.property) : identity$6;
+  const prop = format && format.property ? field$1(format.property) : identity$7;
   return isObject(data) && !isBuffer(data) ? parseJSON(prop(data), format) : prop(JSON.parse(data));
 }
 json.responseType = 'json';
@@ -5309,7 +5378,7 @@ null // no file system access
 );
 
 function UniqueList(idFunc) {
-  const $ = idFunc || identity$6,
+  const $ = idFunc || identity$7,
         list = [],
         ids = {};
 
@@ -6074,7 +6143,7 @@ function stream(filter, apply, receive) {
 }
 EventStream.prototype = {
   _filter: truthy,
-  _apply: identity$6,
+  _apply: identity$7,
 
   targets() {
     return this._targets || (this._targets = UniqueList(id));
@@ -9130,7 +9199,7 @@ function set$5(t) {
 }
 
 function compileMeasures(agg, field) {
-  const get = field || identity$6,
+  const get = field || identity$7,
         ops = resolve(agg),
         out = agg.slice().sort(compareIndex);
 
@@ -10431,7 +10500,7 @@ inherits(DotBin, Transform, {
     }
 
     const source = pulse.materialize(pulse.SOURCE).source,
-          groups = partition$1$1(pulse.source, _.groupby, identity$6),
+          groups = partition$1$1(pulse.source, _.groupby, identity$7),
           smooth = _.smooth || false,
           field = _.field,
           step = _.step || autostep(source, field),
@@ -15432,7 +15501,7 @@ function interpolateRound(a, b) {
 
 var degrees$1 = 180 / Math.PI;
 
-var identity$3 = {
+var identity$4 = {
   translateX: 0,
   translateY: 0,
   rotate: 0,
@@ -15462,14 +15531,14 @@ var svgNode;
 /* eslint-disable no-undef */
 function parseCss(value) {
   const m = new (typeof DOMMatrix === "function" ? DOMMatrix : WebKitCSSMatrix)(value + "");
-  return m.isIdentity ? identity$3 : decompose(m.a, m.b, m.c, m.d, m.e, m.f);
+  return m.isIdentity ? identity$4 : decompose(m.a, m.b, m.c, m.d, m.e, m.f);
 }
 
 function parseSvg(value) {
-  if (value == null) return identity$3;
+  if (value == null) return identity$4;
   if (!svgNode) svgNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
   svgNode.setAttribute("transform", value);
-  if (!(value = svgNode.transform.baseVal.consolidate())) return identity$3;
+  if (!(value = svgNode.transform.baseVal.consolidate())) return identity$4;
   value = value.matrix;
   return decompose(value.a, value.b, value.c, value.d, value.e, value.f);
 }
@@ -15745,7 +15814,7 @@ function number$5(x) {
 
 var unit = [0, 1];
 
-function identity$2(x) {
+function identity$3(x) {
   return x;
 }
 
@@ -15809,14 +15878,14 @@ function transformer$3() {
       transform,
       untransform,
       unknown,
-      clamp = identity$2,
+      clamp = identity$3,
       piecewise,
       output,
       input;
 
   function rescale() {
     var n = Math.min(domain.length, range.length);
-    if (clamp !== identity$2) clamp = clamper(domain[0], domain[n - 1]);
+    if (clamp !== identity$3) clamp = clamper(domain[0], domain[n - 1]);
     piecewise = n > 2 ? polymap : bimap;
     output = input = null;
     return scale;
@@ -15843,7 +15912,7 @@ function transformer$3() {
   };
 
   scale.clamp = function(_) {
-    return arguments.length ? (clamp = _ ? true : identity$2, rescale()) : clamp !== identity$2;
+    return arguments.length ? (clamp = _ ? true : identity$3, rescale()) : clamp !== identity$3;
   };
 
   scale.interpolate = function(_) {
@@ -15861,7 +15930,7 @@ function transformer$3() {
 }
 
 function continuous$1() {
-  return transformer$3()(identity$2, identity$2);
+  return transformer$3()(identity$3, identity$3);
 }
 
 function tickFormat$1(start, stop, count, specifier) {
@@ -15957,7 +16026,7 @@ function linear() {
   return linearish(scale);
 }
 
-function identity$1(domain) {
+function identity$2(domain) {
   var unknown;
 
   function scale(x) {
@@ -15975,7 +16044,7 @@ function identity$1(domain) {
   };
 
   scale.copy = function() {
-    return identity$1(domain).unknown(unknown);
+    return identity$2(domain).unknown(unknown);
   };
 
   domain = arguments.length ? Array.from(domain, number$5) : [0, 1];
@@ -16184,11 +16253,11 @@ function transformSquare(x) {
 }
 
 function powish(transform) {
-  var scale = transform(identity$2, identity$2),
+  var scale = transform(identity$3, identity$3),
       exponent = 1;
 
   function rescale() {
-    return exponent === 1 ? transform(identity$2, identity$2)
+    return exponent === 1 ? transform(identity$3, identity$3)
         : exponent === 0.5 ? transform(transformSqrt, transformSquare)
         : transform(transformPow(exponent), transformPow(1 / exponent));
   }
@@ -16438,7 +16507,7 @@ function transformer$2() {
       t1,
       k10,
       transform,
-      interpolator = identity$2,
+      interpolator = identity$3,
       clamp = false,
       unknown;
 
@@ -16488,7 +16557,7 @@ function copy$1(source, target) {
 }
 
 function sequential() {
-  var scale = linearish(transformer$2()(identity$2));
+  var scale = linearish(transformer$2()(identity$3));
 
   scale.copy = function() {
     return copy$1(scale, sequential());
@@ -16541,7 +16610,7 @@ function transformer$1() {
       t2,
       k10,
       k21,
-      interpolator = identity$2,
+      interpolator = identity$3,
       transform,
       clamp = false,
       unknown;
@@ -16584,7 +16653,7 @@ function transformer$1() {
 }
 
 function diverging() {
-  var scale = linearish(transformer$1()(identity$2));
+  var scale = linearish(transformer$1()(identity$3));
 
   scale.copy = function() {
     return copy$1(scale, diverging());
@@ -16883,12 +16952,12 @@ function point$3() {
   return pointish(band().paddingInner(1));
 }
 
-var map = Array.prototype.map;
+var map$1 = Array.prototype.map;
 function numbers(_) {
-  return map.call(_, toNumber);
+  return map$1.call(_, toNumber);
 }
 
-const slice$2 = Array.prototype.slice;
+const slice$3 = Array.prototype.slice;
 
 function scaleBinOrdinal() {
   let domain = [],
@@ -16909,7 +16978,7 @@ function scaleBinOrdinal() {
 
   scale.range = function (_) {
     if (arguments.length) {
-      range = slice$2.call(_);
+      range = slice$3.call(_);
       return scale;
     } else {
       return range.slice();
@@ -16957,7 +17026,7 @@ function scale$4(type, scale, metadata) {
   }
 } // identity scale
 
-scale$4(Identity, identity$1); // continuous scales
+scale$4(Identity, identity$2); // continuous scales
 
 scale$4(Linear, linear, Continuous);
 scale$4(Log, log$2, [Continuous, Log]);
@@ -17659,10 +17728,10 @@ const HalfSqrt3 = Math.sqrt(3) / 2;
 
 var segmentCache = {};
 var bezierCache = {};
-var join$1 = [].join; // Copied from Inkscape svgtopdf, thanks!
+var join$2 = [].join; // Copied from Inkscape svgtopdf, thanks!
 
 function segments(x, y, rx, ry, large, sweep, rotateX, ox, oy) {
-  const key = join$1.call(arguments);
+  const key = join$2.call(arguments);
 
   if (segmentCache[key]) {
     return segmentCache[key];
@@ -17720,7 +17789,7 @@ function segments(x, y, rx, ry, large, sweep, rotateX, ox, oy) {
   return segmentCache[key] = result;
 }
 function bezier(params) {
-  const key = join$1.call(params);
+  const key = join$2.call(params);
 
   if (bezierCache[key]) {
     return bezierCache[key];
@@ -18206,7 +18275,7 @@ function number$3(_) {
   return typeof _ === 'function' ? _ : () => +_;
 }
 
-function clamp(value, min, max) {
+function clamp$1(value, min, max) {
   return Math.max(min, Math.min(value, max));
 }
 
@@ -18228,10 +18297,10 @@ function vg_rect () {
         w = +width.call(this, _),
         h = +height.call(this, _),
         s = Math.min(w, h) / 2,
-        tl = clamp(+crTL.call(this, _), 0, s),
-        tr = clamp(+crTR.call(this, _), 0, s),
-        bl = clamp(+crBL.call(this, _), 0, s),
-        br = clamp(+crBR.call(this, _), 0, s);
+        tl = clamp$1(+crTL.call(this, _), 0, s),
+        tr = clamp$1(+crTR.call(this, _), 0, s),
+        bl = clamp$1(+crBL.call(this, _), 0, s),
+        br = clamp$1(+crBR.call(this, _), 0, s);
     if (!context) context = buffer = path$3();
 
     if (tl <= 0 && tr <= 0 && bl <= 0 && br <= 0) {
@@ -18459,14 +18528,14 @@ const x$2 = item => item.x || 0,
       sz = item => value$1(item.size, 64),
       ts = item => item.size || 1,
       def = item => !(item.defined === false),
-      type = item => symbols$1(item.shape || 'circle');
+      type$1 = item => symbols$1(item.shape || 'circle');
 
 const arcShape = arc$2$1().startAngle(sa).endAngle(ea).padAngle(pa).innerRadius(ir).outerRadius(or).cornerRadius(cr),
       areavShape = area$2$1().x(x$2).y1(y$2).y0(yh).defined(def),
       areahShape = area$2$1().y(y$2).x1(x$2).x0(xw).defined(def),
       lineShape = line$2$1().x(x$2).y(y$2).defined(def),
       rectShape = vg_rect().x(x$2).y(y$2).width(w$1).height(h).cornerRadius(tl, tr, br, bl),
-      symbolShape = Symbol$1().type(type).size(sz),
+      symbolShape = Symbol$1().type(type$1).size(sz),
       trailShape = vg_trail().x(x$2).y(y$2).defined(def).size(ts);
 function hasCornerRadius(item) {
   return item.cornerRadius || item.cornerRadiusTopLeft || item.cornerRadiusTopRight || item.cornerRadiusBottomRight || item.cornerRadiusBottomLeft;
@@ -25644,7 +25713,7 @@ function geoCentroid$1(object) {
   return [atan2(y, x) * degrees, asin$1(z / m) * degrees];
 }
 
-function compose(a, b) {
+function compose$1(a, b) {
 
   function compose(x, y) {
     return x = a(x, y), b(x[0], x[1]);
@@ -25664,7 +25733,7 @@ function rotationIdentity(lambda, phi) {
 rotationIdentity.invert = rotationIdentity;
 
 function rotateRadians(deltaLambda, deltaPhi, deltaGamma) {
-  return (deltaLambda %= tau$1) ? (deltaPhi || deltaGamma ? compose(rotationLambda(deltaLambda), rotationPhiGamma(deltaPhi, deltaGamma))
+  return (deltaLambda %= tau$1) ? (deltaPhi || deltaGamma ? compose$1(rotationLambda(deltaLambda), rotationPhiGamma(deltaPhi, deltaGamma))
     : rotationLambda(deltaLambda))
     : (deltaPhi || deltaGamma ? rotationPhiGamma(deltaPhi, deltaGamma)
     : rotationIdentity);
@@ -26668,7 +26737,7 @@ function graticule() {
       .extentMinor([[-180, -80 - epsilon$3], [180, 80 + epsilon$3]]);
 }
 
-var identity = x => x;
+var identity$1 = x => x;
 
 var areaSum = new Adder(),
     areaRingSum = new Adder(),
@@ -27022,7 +27091,7 @@ function geoPath(projection, context) {
   };
 
   path.projection = function(_) {
-    return arguments.length ? (projectionStream = _ == null ? (projection = null, identity) : (projection = _).stream, path) : projection;
+    return arguments.length ? (projectionStream = _ == null ? (projection = null, identity$1) : (projection = _).stream, path) : projection;
   };
 
   path.context = function(_) {
@@ -27266,7 +27335,7 @@ function projectionMutator(projectAt) {
       sx = 1, // reflectX
       sy = 1, // reflectX
       theta = null, preclip = clipAntimeridian, // pre-clip angle
-      x0 = null, y0, x1, y1, postclip = identity, // post-clip extent
+      x0 = null, y0, x1, y1, postclip = identity$1, // post-clip extent
       delta2 = 0.5, // precision
       projectResample,
       projectTransform,
@@ -27300,7 +27369,7 @@ function projectionMutator(projectAt) {
   };
 
   projection.clipExtent = function(_) {
-    return arguments.length ? (postclip = _ == null ? (x0 = y0 = x1 = y1 = null, identity) : clipRectangle(x0 = +_[0][0], y0 = +_[0][1], x1 = +_[1][0], y1 = +_[1][1]), reset()) : x0 == null ? null : [[x0, y0], [x1, y1]];
+    return arguments.length ? (postclip = _ == null ? (x0 = y0 = x1 = y1 = null, identity$1) : clipRectangle(x0 = +_[0][0], y0 = +_[0][1], x1 = +_[1][0], y1 = +_[1][1]), reset()) : x0 == null ? null : [[x0, y0], [x1, y1]];
   };
 
   projection.scale = function(_) {
@@ -27355,8 +27424,8 @@ function projectionMutator(projectAt) {
     var center = scaleTranslateRotate(k, 0, 0, sx, sy, alpha).apply(null, project(lambda, phi)),
         transform = scaleTranslateRotate(k, x - center[0], y - center[1], sx, sy, alpha);
     rotate = rotateRadians(deltaLambda, deltaPhi, deltaGamma);
-    projectTransform = compose(project, transform);
-    projectRotateTransform = compose(rotate, projectTransform);
+    projectTransform = compose$1(project, transform);
+    projectRotateTransform = compose$1(rotate, projectTransform);
     projectResample = resample(projectTransform, delta2);
     return reset();
   }
@@ -27782,7 +27851,7 @@ function geoIdentity() {
           this.stream.point(p[0], p[1]);
         }
       }),
-      postclip = identity,
+      postclip = identity$1,
       cache,
       cacheStream;
 
@@ -27818,7 +27887,7 @@ function geoIdentity() {
     return arguments.length ? (postclip = _, x0 = y0 = x1 = y1 = null, reset()) : postclip;
   };
   projection.clipExtent = function(_) {
-    return arguments.length ? (postclip = _ == null ? (x0 = y0 = x1 = y1 = null, identity) : clipRectangle(x0 = +_[0][0], y0 = +_[0][1], x1 = +_[1][0], y1 = +_[1][1]), reset()) : x0 == null ? null : [[x0, y0], [x1, y1]];
+    return arguments.length ? (postclip = _ == null ? (x0 = y0 = x1 = y1 = null, identity$1) : clipRectangle(x0 = +_[0][0], y0 = +_[0][1], x1 = +_[1][0], y1 = +_[1][1]), reset()) : x0 == null ? null : [[x0, y0], [x1, y1]];
   };
   projection.scale = function(_) {
     return arguments.length ? (k = +_, reset()) : k;
@@ -28382,7 +28451,7 @@ inherits(Isocontour, Transform, {
 
     var out = pulse.fork(pulse.NO_SOURCE | pulse.NO_FIELDS),
         source = pulse.materialize(pulse.SOURCE).source,
-        field = _.field || identity$6,
+        field = _.field || identity$7,
         contour = contours().smooth(_.smooth !== false),
         tz = _.thresholds || levels(source, field, _),
         as = _.as === null ? null : _.as || 'contour',
@@ -28902,7 +28971,7 @@ inherits(GeoJSON, Transform, {
         fields = _.fields,
         lon = fields && fields[0],
         lat = fields && fields[1],
-        geojson = _.geojson || !fields && identity$6,
+        geojson = _.geojson || !fields && identity$7,
         flag = pulse.ADD,
         mod;
     mod = _.modified() || pulse.changed(pulse.REM) || pulse.modified(accessorFields(geojson)) || lon && pulse.modified(accessorFields(lon)) || lat && pulse.modified(accessorFields(lat));
@@ -28983,7 +29052,7 @@ inherits(GeoPath, Transform, {
   transform(_, pulse) {
     var out = pulse.fork(pulse.ALL),
         path = this.value,
-        field = _.field || identity$6,
+        field = _.field || identity$7,
         as = _.as || 'path',
         flag = out.SOURCE;
 
@@ -28992,7 +29061,7 @@ inherits(GeoPath, Transform, {
       this.value = path = getProjectionPath(_.projection);
       out.materialize().reflow();
     } else {
-      flag = field === identity$6 || pulse.modified(field.fields) ? out.ADD_MOD : out.ADD;
+      flag = field === identity$7 || pulse.modified(field.fields) ? out.ADD_MOD : out.ADD;
     }
 
     const prev = initPath(path, _.pointRadius);
@@ -29315,7 +29384,7 @@ inherits(Heatmap, Transform, {
 
     var source = pulse.materialize(pulse.SOURCE).source,
         shared = _.resolve === 'shared',
-        field = _.field || identity$6,
+        field = _.field || identity$7,
         opacity = opacity_(_.opacity, _),
         color = color_(_.color, _),
         as = _.as || 'image',
@@ -39465,7 +39534,7 @@ function sequence(seq) {
   return array(seq) || (isString(seq) ? seq : null);
 }
 
-function join(seq) {
+function join$1(seq) {
   for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
     args[_key - 1] = arguments[_key];
   }
@@ -39486,7 +39555,7 @@ function lastindexof(seq) {
 
   return sequence(seq).lastIndexOf(...args);
 }
-function slice$1(seq) {
+function slice$2(seq) {
   for (var _len4 = arguments.length, args = new Array(_len4 > 1 ? _len4 - 1 : 0), _key4 = 1; _key4 < _len4; _key4++) {
     args[_key4 - 1] = arguments[_key4];
   }
@@ -39535,7 +39604,7 @@ function scaleGradient (scale, p0, p1, count, group) {
   let stops = scale.domain(),
       min = stops[0],
       max = peek$1(stops),
-      fraction = identity$6;
+      fraction = identity$7;
 
   if (!(max - min)) {
     // expand scale if domain has zero span, fix #1479
@@ -39762,11 +39831,11 @@ const functionContext = {
   toNumber,
   toString,
   indexof,
-  join,
+  join: join$1,
   lastindexof,
   replace,
   reverse: reverse$1,
-  slice: slice$1,
+  slice: slice$2,
   flush,
   lerp,
   merge,
@@ -46311,7 +46380,7 @@ var vegaImport = /*#__PURE__*/Object.freeze({
     flush: flush,
     hasOwnProperty: has$1,
     id: id,
-    identity: identity$6,
+    identity: identity$7,
     inherits: inherits,
     inrange: inrange,
     isArray: isArray,
@@ -46566,11 +46635,11 @@ var Unary = {
   '!': a => !a
 };
 
-const slice = Array.prototype.slice;
+const slice$1 = Array.prototype.slice;
 
 const apply = (m, args, cast) => {
   const obj = cast ? cast(args[0]) : args[0];
-  return obj[m].apply(obj, slice.call(args, 1));
+  return obj[m].apply(obj, slice$1.call(args, 1));
 };
 
 const datetime = (y, m, d, H, M, S, ms) => new Date(y, m || 0, d != null ? d : 1, H || 0, M || 0, S || 0, ms || 0);
@@ -51653,7 +51722,7 @@ function forEach(mapping, f, thisArg) {
         }
     }
 }
-function reduce(mapping, f, init, thisArg) {
+function reduce$1(mapping, f, init, thisArg) {
     if (!mapping) {
         return init;
     }
@@ -54561,7 +54630,7 @@ var __rest$f = (undefined && undefined.__rest) || function (s, e) {
         }
     return t;
 };
-function assembleInit(init, isExpr = true, wrap = identity$6) {
+function assembleInit(init, isExpr = true, wrap = identity$7) {
     if (isArray(init)) {
         const assembled = init.map(v => assembleInit(v, isExpr, wrap));
         return isExpr ? `[${assembled.join(', ')}]` : assembled;
@@ -62594,7 +62663,7 @@ class ModelWithField extends Model {
         return vgField(fieldDef, opt);
     }
     reduceFieldDef(f, init) {
-        return reduce(this.getMapping(), (acc, cd, c) => {
+        return reduce$1(this.getMapping(), (acc, cd, c) => {
             const fieldDef = getFieldDef(cd);
             if (fieldDef) {
                 return f(acc, fieldDef, c);
@@ -70785,7 +70854,7 @@ function combineSpecWithDimension(spec, options) {
 
 /* node_modules/svelte-vega/dist/VegaEmbed.svelte generated by Svelte v3.51.0 */
 
-function create_fragment$4(ctx) {
+function create_fragment$5(ctx) {
 	let div;
 
 	return {
@@ -70806,7 +70875,7 @@ function create_fragment$4(ctx) {
 	};
 }
 
-function instance$4($$self, $$props, $$invalidate) {
+function instance$5($$self, $$props, $$invalidate) {
 	let { options } = $$props;
 	let { spec } = $$props;
 	let { view } = $$props;
@@ -70974,7 +71043,7 @@ class VegaEmbed extends SvelteComponent {
 	constructor(options) {
 		super();
 
-		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, {
+		init$1(this, options, instance$5, create_fragment$5, safe_not_equal, {
 			options: 2,
 			spec: 3,
 			view: 1,
@@ -70988,7 +71057,7 @@ var VegaEmbed$1 = VegaEmbed;
 
 /* node_modules/svelte-vega/dist/VegaLite.svelte generated by Svelte v3.51.0 */
 
-function create_fragment$3(ctx) {
+function create_fragment$4(ctx) {
 	let vegaembed;
 	let updating_view;
 	let current;
@@ -71053,7 +71122,7 @@ function create_fragment$3(ctx) {
 
 const mode = "vega-lite";
 
-function instance$3($$self, $$props, $$invalidate) {
+function instance$4($$self, $$props, $$invalidate) {
 	let vegaLiteOptions;
 	let { spec } = $$props;
 	let { options = {} } = $$props;
@@ -71105,7 +71174,7 @@ class VegaLite extends SvelteComponent {
 	constructor(options) {
 		super();
 
-		init$1(this, options, instance$3, create_fragment$3, safe_not_equal, {
+		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, {
 			spec: 1,
 			options: 5,
 			data: 2,
@@ -71119,48 +71188,48 @@ var VegaLite$1 = VegaLite;
 
 /* src/lib/components/charts/HeatGrid.svelte generated by Svelte v3.51.0 */
 
-function add_css$2(target) {
+function add_css$3(target) {
 	append_styles(target, "svelte-19re9gj", "table.svelte-19re9gj{width:100%;height:min-content}td.svelte-19re9gj{text-align:center}td.svelte-19re9gj:first-child{text-align:right}.datapoint.svelte-19re9gj{width:16px;height:16px;margin:auto}");
 }
 
 function get_each_context(ctx, list, i) {
 	const child_ctx = ctx.slice();
-	child_ctx[6] = list[i];
-	child_ctx[8] = i;
+	child_ctx[7] = list[i];
+	child_ctx[9] = i;
 	return child_ctx;
 }
 
 function get_each_context_1(ctx, list, i) {
 	const child_ctx = ctx.slice();
-	child_ctx[9] = list[i];
-	child_ctx[14] = i;
-	const constants_0 = /*data*/ child_ctx[0][/*i*/ child_ctx[8]][/*j*/ child_ctx[14]];
-	child_ctx[10] = constants_0;
+	child_ctx[10] = list[i];
+	child_ctx[15] = i;
+	const constants_0 = /*data*/ child_ctx[0][/*i*/ child_ctx[9]][/*j*/ child_ctx[15]];
+	child_ctx[11] = constants_0;
 
-	const constants_1 = () => /*onPointHovered*/ child_ctx[4]({
-		i: /*i*/ child_ctx[8],
-		j: /*j*/ child_ctx[14],
-		columnName: /*columnName*/ child_ctx[9],
-		rowName: /*rowName*/ child_ctx[6],
-		value: /*value*/ child_ctx[10]
+	const constants_1 = () => /*onPointHovered*/ child_ctx[5]({
+		i: /*i*/ child_ctx[9],
+		j: /*j*/ child_ctx[15],
+		columnName: /*columnName*/ child_ctx[10],
+		rowName: /*rowName*/ child_ctx[7],
+		value: /*value*/ child_ctx[11]
 	});
 
-	child_ctx[11] = constants_1;
-	const constants_2 = () => /*onPointHovered*/ child_ctx[4]();
-	child_ctx[12] = constants_2;
+	child_ctx[12] = constants_1;
+	const constants_2 = () => /*onPointHovered*/ child_ctx[5]();
+	child_ctx[13] = constants_2;
 	return child_ctx;
 }
 
 function get_each_context_2(ctx, list, i) {
 	const child_ctx = ctx.slice();
-	child_ctx[9] = list[i];
+	child_ctx[10] = list[i];
 	return child_ctx;
 }
 
-// (24:2) {#each columnHeaders as columnName}
+// (25:2) {#each columnHeaders as columnName}
 function create_each_block_2(ctx) {
 	let td;
-	let t_value = /*columnName*/ ctx[9] + "";
+	let t_value = /*columnName*/ ctx[10] + "";
 	let t;
 
 	return {
@@ -71174,7 +71243,7 @@ function create_each_block_2(ctx) {
 			append(td, t);
 		},
 		p(ctx, dirty) {
-			if (dirty & /*columnHeaders*/ 4 && t_value !== (t_value = /*columnName*/ ctx[9] + "")) set_data(t, t_value);
+			if (dirty & /*columnHeaders*/ 4 && t_value !== (t_value = /*columnName*/ ctx[10] + "")) set_data(t, t_value);
 		},
 		d(detaching) {
 			if (detaching) detach(td);
@@ -71182,36 +71251,32 @@ function create_each_block_2(ctx) {
 	};
 }
 
-// (31:3) {#each columnHeaders as columnName, j}
-function create_each_block_1(ctx) {
-	let td;
+// (51:5) {:else}
+function create_else_block(ctx) {
 	let div;
 	let mounted;
 	let dispose;
 
 	return {
 		c() {
-			td = element$2("td");
 			div = element$2("div");
 			attr$6(div, "class", "datapoint svelte-19re9gj");
-			set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[10]]);
+			set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[11]]);
 			attr$6(div, "tabindex", "0");
-			attr$6(td, "class", "svelte-19re9gj");
 		},
 		m(target, anchor) {
-			insert$2(target, td, anchor);
-			append(td, div);
+			insert$2(target, div, anchor);
 
 			if (!mounted) {
 				dispose = [
-					listen(div, "blur", /*onExit*/ ctx[12]),
+					listen(div, "blur", /*onExit*/ ctx[13]),
 					listen(div, "focus", function () {
-						if (is_function(/*onEnter*/ ctx[11])) /*onEnter*/ ctx[11].apply(this, arguments);
+						if (is_function(/*onEnter*/ ctx[12])) /*onEnter*/ ctx[12].apply(this, arguments);
 					}),
 					listen(div, "mouseover", function () {
-						if (is_function(/*onEnter*/ ctx[11])) /*onEnter*/ ctx[11].apply(this, arguments);
+						if (is_function(/*onEnter*/ ctx[12])) /*onEnter*/ ctx[12].apply(this, arguments);
 					}),
-					listen(div, "mouseout", /*onExit*/ ctx[12])
+					listen(div, "mouseout", /*onExit*/ ctx[13])
 				];
 
 				mounted = true;
@@ -71221,22 +71286,108 @@ function create_each_block_1(ctx) {
 			ctx = new_ctx;
 
 			if (dirty & /*colorMap, data*/ 9) {
-				set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[10]]);
+				set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[11]]);
 			}
 		},
 		d(detaching) {
-			if (detaching) detach(td);
+			if (detaching) detach(div);
 			mounted = false;
 			run_all(dispose);
 		}
 	};
 }
 
-// (28:1) {#each rowHeaders as rowName, i}
+// (42:5) {#if useClick}
+function create_if_block$2(ctx) {
+	let div;
+	let mounted;
+	let dispose;
+
+	return {
+		c() {
+			div = element$2("div");
+			attr$6(div, "class", "datapoint svelte-19re9gj");
+			set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[11]]);
+			attr$6(div, "tabindex", "0");
+		},
+		m(target, anchor) {
+			insert$2(target, div, anchor);
+
+			if (!mounted) {
+				dispose = [
+					listen(div, "click", function () {
+						if (is_function(/*onEnter*/ ctx[12])) /*onEnter*/ ctx[12].apply(this, arguments);
+					}),
+					listen(div, "keydown", function () {
+						if (is_function(/*onEnter*/ ctx[12])) /*onEnter*/ ctx[12].apply(this, arguments);
+					})
+				];
+
+				mounted = true;
+			}
+		},
+		p(new_ctx, dirty) {
+			ctx = new_ctx;
+
+			if (dirty & /*colorMap, data*/ 9) {
+				set_style(div, "background", /*colorMap*/ ctx[3][/*value*/ ctx[11]]);
+			}
+		},
+		d(detaching) {
+			if (detaching) detach(div);
+			mounted = false;
+			run_all(dispose);
+		}
+	};
+}
+
+// (32:3) {#each columnHeaders as columnName, j}
+function create_each_block_1(ctx) {
+	let td;
+
+	function select_block_type(ctx, dirty) {
+		if (/*useClick*/ ctx[4]) return create_if_block$2;
+		return create_else_block;
+	}
+
+	let current_block_type = select_block_type(ctx);
+	let if_block = current_block_type(ctx);
+
+	return {
+		c() {
+			td = element$2("td");
+			if_block.c();
+			attr$6(td, "class", "svelte-19re9gj");
+		},
+		m(target, anchor) {
+			insert$2(target, td, anchor);
+			if_block.m(td, null);
+		},
+		p(ctx, dirty) {
+			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block) {
+				if_block.p(ctx, dirty);
+			} else {
+				if_block.d(1);
+				if_block = current_block_type(ctx);
+
+				if (if_block) {
+					if_block.c();
+					if_block.m(td, null);
+				}
+			}
+		},
+		d(detaching) {
+			if (detaching) detach(td);
+			if_block.d();
+		}
+	};
+}
+
+// (29:1) {#each rowHeaders as rowName, i}
 function create_each_block(ctx) {
 	let tr;
 	let td;
-	let t0_value = /*rowName*/ ctx[6] + "";
+	let t0_value = /*rowName*/ ctx[7] + "";
 	let t0;
 	let t1;
 	let t2;
@@ -71274,9 +71425,9 @@ function create_each_block(ctx) {
 			append(tr, t2);
 		},
 		p(ctx, dirty) {
-			if (dirty & /*rowHeaders*/ 2 && t0_value !== (t0_value = /*rowName*/ ctx[6] + "")) set_data(t0, t0_value);
+			if (dirty & /*rowHeaders*/ 2 && t0_value !== (t0_value = /*rowName*/ ctx[7] + "")) set_data(t0, t0_value);
 
-			if (dirty & /*colorMap, data, onPointHovered, columnHeaders, rowHeaders*/ 31) {
+			if (dirty & /*colorMap, data, onPointHovered, columnHeaders, rowHeaders, useClick*/ 63) {
 				each_value_1 = /*columnHeaders*/ ctx[2];
 				let i;
 
@@ -71306,7 +71457,7 @@ function create_each_block(ctx) {
 	};
 }
 
-function create_fragment$2(ctx) {
+function create_fragment$3(ctx) {
 	let table;
 	let tr;
 	let td;
@@ -71387,7 +71538,7 @@ function create_fragment$2(ctx) {
 				each_blocks_1.length = each_value_2.length;
 			}
 
-			if (dirty & /*columnHeaders, colorMap, data, onPointHovered, rowHeaders*/ 31) {
+			if (dirty & /*columnHeaders, colorMap, data, onPointHovered, rowHeaders, useClick*/ 63) {
 				each_value = /*rowHeaders*/ ctx[1];
 				let i;
 
@@ -71420,11 +71571,12 @@ function create_fragment$2(ctx) {
 	};
 }
 
-function instance$2($$self, $$props, $$invalidate) {
+function instance$3($$self, $$props, $$invalidate) {
 	let { data } = $$props;
 	let { rowHeaders } = $$props;
 	let { columnHeaders } = $$props;
 	let { colorMap } = $$props;
+	let { useClick } = $$props;
 	const dispatch = createEventDispatcher();
 
 	const onPointHovered = payload => {
@@ -71436,6 +71588,7 @@ function instance$2($$self, $$props, $$invalidate) {
 		if ('rowHeaders' in $$props) $$invalidate(1, rowHeaders = $$props.rowHeaders);
 		if ('columnHeaders' in $$props) $$invalidate(2, columnHeaders = $$props.columnHeaders);
 		if ('colorMap' in $$props) $$invalidate(3, colorMap = $$props.colorMap);
+		if ('useClick' in $$props) $$invalidate(4, useClick = $$props.useClick);
 	};
 
 	$$self.$$.update = () => {
@@ -71456,7 +71609,7 @@ function instance$2($$self, $$props, $$invalidate) {
 		}
 	};
 
-	return [data, rowHeaders, columnHeaders, colorMap, onPointHovered];
+	return [data, rowHeaders, columnHeaders, colorMap, useClick, onPointHovered];
 }
 
 class HeatGrid extends SvelteComponent {
@@ -71466,16 +71619,17 @@ class HeatGrid extends SvelteComponent {
 		init$1(
 			this,
 			options,
-			instance$2,
-			create_fragment$2,
+			instance$3,
+			create_fragment$3,
 			safe_not_equal,
 			{
 				data: 0,
 				rowHeaders: 1,
 				columnHeaders: 2,
-				colorMap: 3
+				colorMap: 3,
+				useClick: 4
 			},
-			add_css$2
+			add_css$3
 		);
 	}
 }
@@ -71486,12 +71640,12 @@ const v2022_10_14_Heat_map = { "config": { "title": { "font": "Averta", "anchor"
 
 /* src/lib/components/slides/Slide1.svelte generated by Svelte v3.51.0 */
 
-function add_css$1(target) {
+function add_css$2(target) {
 	append_styles(target, "svelte-b5l3x3", "div.svelte-b5l3x3{font-family:sans-serif;width:800px;display:grid;grid-template-columns:50% 50%;align-items:flex-start}");
 }
 
 // (80:1) {#if spec}
-function create_if_block(ctx) {
+function create_if_block$1(ctx) {
 	let vegalite;
 	let current;
 	vegalite = new VegaLite$1({ props: { spec: /*spec*/ ctx[1] } });
@@ -71524,7 +71678,7 @@ function create_if_block(ctx) {
 	};
 }
 
-function create_fragment$1(ctx) {
+function create_fragment$2(ctx) {
 	let div;
 	let heatgrid;
 	let t;
@@ -71562,7 +71716,7 @@ function create_fragment$1(ctx) {
 		});
 
 	heatgrid.$on("pointhovered", /*pointhovered_handler*/ ctx[2]);
-	let if_block = /*spec*/ ctx[1] && create_if_block(ctx);
+	let if_block = /*spec*/ ctx[1] && create_if_block$1(ctx);
 
 	return {
 		c() {
@@ -71588,7 +71742,7 @@ function create_fragment$1(ctx) {
 						transition_in(if_block, 1);
 					}
 				} else {
-					if_block = create_if_block(ctx);
+					if_block = create_if_block$1(ctx);
 					if_block.c();
 					transition_in(if_block, 1);
 					if_block.m(div, null);
@@ -71622,7 +71776,7 @@ function create_fragment$1(ctx) {
 	};
 }
 
-function instance$1($$self, $$props, $$invalidate) {
+function instance$2($$self, $$props, $$invalidate) {
 	const chart1 = test_bar_chart;
 	const chart2 = test_magnitude_vs_growth;
 	const chart3 = v2022_10_14_Heat_map;
@@ -71687,65 +71841,1663 @@ function instance$1($$self, $$props, $$invalidate) {
 class Slide1 extends SvelteComponent {
 	constructor(options) {
 		super();
-		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, {}, add_css$1);
+		init$1(this, options, instance$2, create_fragment$2, safe_not_equal, {}, add_css$2);
+	}
+}
+
+/**
+* @overview lamb - A lightweight, and docile, JavaScript library to help embracing functional programming.
+* @author Andrea Scartabelli <andrea.scartabelli@gmail.com>
+* @version 0.60.0
+* @module lamb
+* @license MIT
+*/
+/**
+ * The placeholder object used in partial application.
+ * @memberof module:lamb
+ * @alias module:lamb.__
+ * @category Special properties
+ * @see {@link module:lamb.partial|partial}, {@link module:lamb.partialRight|partialRight}
+ * @see {@link module:lamb.asPartial|asPartial}
+ * @since 0.57.0
+ * @type {Object}
+ */
+var __ = {};
+
+/**
+ * Verifies that the two supplied values are the same value using the "SameValueZero" comparison.<br/>
+ * With this comparison <code>NaN</code> is equal to itself, but <code>0</code> and <code>-0</code> are
+ * considered the same value.<br/>
+ * See also {@link module:lamb.isSVZ|isSVZ} for a curried version building a predicate and
+ * {@link module:lamb.areSame|areSame} and {@link module:lamb.is|is} to perform a "SameValue" comparison.
+ * @example
+ * const testObject = {};
+ *
+ * _.areSVZ({}, testObject) // => false
+ * _.areSVZ(testObject, testObject) // => true
+ * _.areSVZ("foo", "foo") // => true
+ * _.areSVZ(0, -0) // => true
+ * _.areSVZ(0 / 0, NaN) // => true
+ *
+ * @memberof module:lamb
+ * @category Logic
+ * @see {@link module:lamb.isSVZ|isSVZ}
+ * @see {@link module:lamb.areSame|areSame}, {@link module:lamb.is|is}
+ * @see [SameValue comparison]{@link https://www.ecma-international.org/ecma-262/7.0/#sec-samevalue}
+ * @see [SameValueZero comparison]{@link https://www.ecma-international.org/ecma-262/7.0/#sec-samevaluezero}
+ * @since 0.50.0
+ * @param {*} a
+ * @param {*} b
+ * @returns {Boolean}
+ */
+function areSVZ (a, b) {
+    return a !== a ? b !== b : a === b; // eslint-disable-line no-self-compare
+}
+
+/**
+ * Builds a function that passes only two arguments to the given function.<br/>
+ * It's simply a shortcut for a common use case of {@link module:lamb.aritize|aritize},
+ * exposed for convenience.
+ * @example
+ * _.list(1, 2, 3, 4, 5) // => [1, 2, 3, 4, 5]
+ * _.binary(_.list)(1, 2, 3, 4, 5) // => [1, 2]
+ *
+ * @memberof module:lamb
+ * @category Function
+ * @see {@link module:lamb.aritize|aritize}
+ * @see {@link module:lamb.unary|unary}
+ * @since 0.10.0
+ * @param {Function} fn
+ * @returns {Function}
+ */
+function binary (fn) {
+    return function (a, b) {
+        return fn.call(this, a, b);
+    };
+}
+
+/**
+ * "Clamps" a number within the given limits, both included.<br/>
+ * The function will convert to number all its parameters before starting any
+ * evaluation, and will return <code>NaN</code> if <code>min</code> is greater
+ * than <code>max</code>.
+ * @example
+ * _.clamp(-5, 0, 10) // => 0
+ * _.clamp(5, 0, 10) // => 5
+ * _.clamp(15, 0, 10) // => 10
+ * _.clamp(0, 0, 10) // => 0
+ * _.clamp(10, 0, 10) // => 10
+ * _.is(_.clamp(-0, 0, 10), -0) // => true
+ * _.clamp(10, 20, 15) // => NaN
+ *
+ * @memberof module:lamb
+ * @category Math
+ * @see {@link module:lamb.clampWithin|clampWithin}
+ * @since 0.13.0
+ * @param {Number} n
+ * @param {Number} min
+ * @param {Number} max
+ * @returns {Number}
+ */
+function clamp (n, min, max) {
+    n = +n;
+    min = +min;
+    max = +max;
+
+    if (min > max) {
+        return NaN;
+    } else {
+        return n < min ? min : n > max ? max : n;
+    }
+}
+
+/**
+ * Builds a partially applied function.<br/>
+ * The {@link module:lamb.__|__} object can be used as a placeholder for arguments.<br/>
+ * @example
+ * const __ = _.__;
+ * const users = [
+ *     {id: 1, name: "John", active: true, confirmedMail: true},
+ *     {id: 2, name: "Jane", active: true, confirmedMail: false},
+ *     {id: 3, name: "Mario", active: false, confirmedMail: false}
+ * ];
+ * const isKeyTrue = _.partial(_.hasKeyValue, [__, true]);
+ * const isActive = isKeyTrue("active");
+ * const hasConfirmedMail = isKeyTrue("confirmedMail");
+ *
+ * _.map(users, isActive) // => [true, true, false]
+ * _.map(users, hasConfirmedMail) // => [true, false, false]
+ *
+ * @memberof module:lamb
+ * @category Function
+ * @see {@link module:lamb.partialRight|partialRight}
+ * @see {@link module:lamb.asPartial|asPartial}
+ * @see {@link module:lamb.curry|curry}, {@link module:lamb.curryRight|curryRight}
+ * @see {@link module:lamb.curryable|curryable}, {@link module:lamb.curryableRight|curryableRight}
+ * @see {@link module:lamb.__|__} The placeholder object.
+ * @since 0.1.0
+ * @param {Function} fn
+ * @param {Array} args
+ * @returns {Function}
+ */
+function partial (fn, args) {
+    return function () {
+        if (!Array.isArray(args)) {
+            return fn.apply(this, arguments);
+        }
+
+        var lastIdx = 0;
+        var newArgs = [];
+        var argsLen = args.length;
+
+        for (var i = 0, boundArg; i < argsLen; i++) {
+            boundArg = args[i];
+            newArgs[i] = boundArg === __ ? arguments[lastIdx++] : boundArg;
+        }
+
+        for (var len = arguments.length; lastIdx < len; lastIdx++) {
+            newArgs[i++] = arguments[lastIdx];
+        }
+
+        return fn.apply(this, newArgs);
+    };
+}
+
+/**
+ * Builds a partial application of a ternary function so that its first parameter
+ * is expected as the last one.<br/>
+ * The <code>shouldAritize</code> parameter is for the "reduce" functions, where
+ * the absence of the <code>initialValue</code> transforms a "fold" operation into a
+ * "reduce" one.
+ * @private
+ * @param {Function} fn
+ * @param {Boolean} shouldAritize
+ * @returns {Function}
+ */
+function _makePartial3 (fn, shouldAritize) {
+    return function (a, b) {
+        var f = shouldAritize && arguments.length !== 2 ? binary(fn) : fn;
+
+        return partial(f, [__, a, b]);
+    };
+}
+
+/**
+ * The I combinator. Any value passed to the function is simply returned as it is.
+ * @example
+ * const foo = {bar: "baz"};
+ *
+ * _.identity(foo) === foo // true
+ *
+ * @memberof module:lamb
+ * @category Function
+ * @see [SKI combinator calculus]{@link https://en.wikipedia.org/wiki/SKI_combinator_calculus}
+ * @since 0.1.0
+ * @param {*} value
+ * @returns {*} The value passed as parameter.
+ */
+function identity (value) {
+    return value;
+}
+
+/**
+ * Returns a function that is the composition of the functions given as parameters.
+ * The first function consumes the result of the function that follows.
+ * @example
+ * const sayHi = name => `Hi, ${name}`;
+ * const capitalize = s => s[0].toUpperCase() + s.substr(1).toLowerCase();
+ * const fixNameAndSayHi = _.compose(sayHi, capitalize);
+ *
+ * sayHi("bOb") // => "Hi, bOb"
+ * fixNameAndSayHi("bOb") // "Hi, Bob"
+ *
+ * const users = [{name: "fred"}, {name: "bOb"}];
+ * const sayHiToUser = _.compose(fixNameAndSayHi, _.getKey("name"));
+ *
+ * _.map(users, sayHiToUser) // ["Hi, Fred", "Hi, Bob"]
+ *
+ * @memberof module:lamb
+ * @category Function
+ * @see {@link module:lamb.pipe|pipe}
+ * @since 0.1.0
+ * @param {Function} a
+ * @param {Function} b
+ * @returns {Function}
+ */
+function compose (a, b) {
+    return arguments.length ? function () {
+        return a.call(this, b.apply(this, arguments));
+    } : identity;
+}
+
+var MAX_ARRAY_LENGTH = 4294967295;
+
+/**
+ * Converts a value to a valid array length, thus an integer within
+ * <code>0</code> and <code>2<sup>32</sup> - 1</code> (both included).
+ * @private
+ * @param {*} value
+ * @returns {Number}
+ */
+function _toArrayLength (value) {
+    return clamp(value, 0, MAX_ARRAY_LENGTH) >>> 0;
+}
+
+/**
+ * Creates generic functions out of methods.
+ * @author A very little change on a great idea by [Irakli Gozalishvili]{@link https://github.com/Gozala/}.
+ * Thanks for this *beautiful* one-liner (never liked your "unbind" naming choice, though).
+ * @memberof module:lamb
+ * @category Function
+ * @function
+ * @example
+ * const join = _.generic(Array.prototype.join);
+ *
+ * join([1, 2, 3, 4, 5], "-") // => "1-2-3-4-5"
+ *
+ * // the function will work with any array-like object
+ * join("hello", "-") // => "h-e-l-l-o"
+ *
+ * @since 0.1.0
+ * @param {Function} method
+ * @returns {Function}
+ */
+var generic = Function.bind.bind(Function.call);
+
+/**
+ * Verifies if a value is <code>null</code>.
+ * @example
+ * _.isNull(null) // => true
+ * _.isNull(void 0) // => false
+ * _.isNull(false) // => false
+ *
+ * @memberof module:lamb
+ * @category Type
+ * @see {@link module:lamb.isNil|isNil} if you want to check for <code>undefined</code> too.
+ * @since 0.1.0
+ * @param {*} value
+ * @returns {Boolean}
+ */
+function isNull (value) {
+    return value === null;
+}
+
+/**
+ * Verifies if a value is <code>undefined</code>.
+ * @example
+ * _.isUndefined(null) // => false
+ * _.isUndefined(void 0) // => true
+ * _.isUndefined(false) // => false
+ *
+ * @memberof module:lamb
+ * @category Type
+ * @see {@link module:lamb.isNil|isNil} if you want to check for <code>null</code> too.
+ * @since 0.1.0
+ * @param {*} value
+ * @returns {Boolean}
+ */
+function isUndefined (value) {
+    return value === void 0;
+}
+
+/**
+ * Verifies if a value is <code>null</code> or <code>undefined</code>.
+ * @example
+ * _.isNil(NaN) // => false
+ * _.isNil({}) // => false
+ * _.isNil(null) // => true
+ * _.isNil(void 0) // => true
+ * _.isNil() // => true
+ *
+ * @memberof module:lamb
+ * @category Type
+ * @see {@link module:lamb.isNull|isNull}
+ * @see {@link module:lamb.isUndefined|isUndefined}
+ * @since 0.1.0
+ * @param {*} value
+ * @returns {Boolean}
+ */
+function isNil (value) {
+    return isNull(value) || isUndefined(value);
+}
+
+/**
+ * Curries a function of arity 2.
+ * @private
+ * @param {Function} fn
+ * @param {Boolean} [isRightCurry=false]
+ * @returns {Function}
+ */
+function _curry2 (fn, isRightCurry) {
+    return function (a) {
+        return function (b) {
+            return isRightCurry ? fn.call(this, b, a) : fn.call(this, a, b);
+        };
+    };
+}
+
+/**
+ * Builds a new array by applying the iteratee function to each element of the
+ * received array-like object.<br/>
+ * Note that unlike the native array method this function doesn't skip unassigned or deleted indexes.
+ * @example
+ * _.map(["Joe", "Mario", "Jane"], _.invoke("toUpperCase")) // => ["JOE", "MARIO", "JANE"]
+ *
+ * _.map([4, 9, 16], Math.sqrt); // => [2, 3, 4]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.mapWith|mapWith}
+ * @see {@link module:lamb.flatMap|flatMap}, {@link module:lamb.flatMapWith|flatMapWith}
+ * @since 0.1.0
+ * @param {ArrayLike} arrayLike
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Array}
+ */
+function map (arrayLike, iteratee) {
+    var len = _toArrayLength(arrayLike.length);
+    var result = Array(len);
+
+    for (var i = 0; i < len; i++) {
+        result[i] = iteratee(arrayLike[i], i, arrayLike);
+    }
+
+    return result;
+}
+
+/**
+ * A curried version of {@link module:lamb.map|map} that uses the provided iteratee to
+ * build a function expecting the array-like object to act upon.
+ * @example
+ * const square = n => n ** 2;
+ * const getSquares = _.mapWith(square);
+ *
+ * getSquares([1, 2, 3, 4, 5]) // => [1, 4, 9, 16, 25]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @see {@link module:lamb.map|map}
+ * @see {@link module:lamb.flatMap|flatMap}, {@link module:lamb.flatMapWith|flatMapWith}
+ * @since 0.1.0
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Function}
+ */
+var mapWith = _curry2(map, true);
+
+/**
+ * Builds a reduce function. The <code>step</code> parameter must be <code>1</code>
+ * to build  {@link module:lamb.reduce|reduce} and <code>-1</code> to build
+ * {@link module:lamb.reduceRight|reduceRight}.
+ * @private
+ * @param {Number} step
+ * @returns {Function}
+ */
+function _makeReducer (step) {
+    return function (arrayLike, accumulator, initialValue) {
+        var len = _toArrayLength(arrayLike.length);
+        var idx = step === 1 ? 0 : len - 1;
+        var nCalls;
+        var result;
+
+        if (arguments.length === 3) {
+            nCalls = len;
+            result = initialValue;
+        } else {
+            if (len === 0) {
+                throw new TypeError("Reduce of empty array-like with no initial value");
+            }
+
+            result = arrayLike[idx];
+            idx += step;
+            nCalls = len - 1;
+        }
+
+        for (; nCalls--; idx += step) {
+            result = accumulator(result, arrayLike[idx], idx, arrayLike);
+        }
+
+        return result;
+    };
+}
+
+/**
+ * Reduces (or folds) the values of an array-like object, starting from the first, to a new
+ * value using the provided <code>accumulator</code> function.<br/>
+ * Note that unlike the native array method this function doesn't skip unassigned or deleted indexes.
+ * @example
+ * _.reduce([1, 2, 3, 4], _.sum) // => 10
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @see {@link module:lamb.reduceRight|reduceRight}
+ * @see {@link module:lamb.reduceWith|reduceWith}, {@link module:lamb.reduceRightWith|reduceRightWith}
+ * @since 0.1.0
+ * @param {ArrayLike} arrayLike
+ * @param {AccumulatorCallback} accumulator
+ * @param {*} [initialValue]
+ * @returns {*}
+ */
+var reduce = _makeReducer(1);
+
+/**
+ * Converts a value to an integer.
+ * @private
+ * @param {*} value
+ * @returns {Number}
+ */
+function _toInteger (value) {
+    var n = +value;
+
+    if (n !== n) { // eslint-disable-line no-self-compare
+        return 0;
+    } else if (n % 1 === 0) {
+        return n;
+    } else {
+        return Math.floor(Math.abs(n)) * (n < 0 ? -1 : 1);
+    }
+}
+
+/**
+ * Builds an array by extracting a portion of an array-like object.<br/>
+ * Note that unlike the native array method this function ensures that dense
+ * arrays are returned.<br/>
+ * Also, unlike the native method, the <code>start</code> and <code>end</code>
+ * parameters aren't optional and will be simply converted to integer.<br/>
+ * See {@link module:lamb.dropFrom|dropFrom} and {@link module:lamb.drop|drop} if you want a
+ * slice to the end of the array-like.
+ * @example
+ * const arr = [1, 2, 3, 4, 5];
+ *
+ * _.slice(arr, 0, 2) // => [1, 2]
+ * _.slice(arr, 2, -1) // => [3, 4]
+ * _.slice(arr, -3, 5) // => [3, 4, 5]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.sliceAt|sliceAt}
+ * @see {@link module:lamb.dropFrom|dropFrom}, {@link module:lamb.drop|drop}
+ * @since 0.1.0
+ * @param {ArrayLike} arrayLike - Any array like object.
+ * @param {Number} start - Index at which to begin extraction.
+ * @param {Number} end - Index at which to end extraction. Extracts up to but not including end.
+ * @returns {Array}
+ */
+function slice (arrayLike, start, end) {
+    var len = _toArrayLength(arrayLike.length);
+    var begin = _toInteger(start);
+    var upTo = _toInteger(end);
+
+    if (begin < 0) {
+        begin = begin < -len ? 0 : begin + len;
+    }
+
+    if (upTo < 0) {
+        upTo = upTo < -len ? 0 : upTo + len;
+    } else if (upTo > len) {
+        upTo = len;
+    }
+
+    var resultLen = upTo - begin;
+    var result = resultLen > 0 ? Array(resultLen) : [];
+
+    for (var i = 0; i < resultLen; i++) {
+        result[i] = arrayLike[begin + i];
+    }
+
+    return result;
+}
+
+var objectProtoToString = Object.prototype.toString;
+
+/**
+ * Retrieves the "type tag" from the given value.
+ * @example
+ * const x = 5;
+ * const y = new Number(5);
+ *
+ * typeof x // => "number"
+ * typeof y // => "object"
+ * _.type(x) // => "Number"
+ * _.type(y) // => "Number"
+ *
+ * _.type(Object.prototype.toString) // => "Function"
+ * _.type(/a/) // => "RegExp"
+ *
+ * @memberof module:lamb
+ * @category Type
+ * @see {@link module:lamb.isType|isType}
+ * @since 0.9.0
+ * @param {*} value
+ * @returns {String}
+ */
+function type (value) {
+    return objectProtoToString.call(value).slice(8, -1);
+}
+
+/**
+ * Checks if an array-like object contains the given value.<br/>
+ * Please note that the equality test is made with {@link module:lamb.areSVZ|areSVZ}; so you can
+ * check for <code>NaN</code>, but <code>0</code> and <code>-0</code> are the same value.<br/>
+ * See also {@link module:lamb.contains|contains} for a curried version building a predicate.
+ * @example
+ * const numbers = [0, 1, 2, 3, NaN];
+ *
+ * _.isIn(numbers, 1) // => true
+ * _.isIn(numbers, 0) // => true
+ * _.isIn(numbers, -0) // => true
+ * _.isIn(numbers, NaN) // => true
+ * _.isIn(numbers, 5) // => false
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.contains|contains}
+ * @since 0.13.0
+ * @param {ArrayLike} arrayLike
+ * @param {*} value
+ * @returns {Boolean}
+ */
+function isIn (arrayLike, value) {
+    var result = false;
+
+    for (var i = 0, len = arrayLike.length; i < len; i++) {
+        if (areSVZ(value, arrayLike[i])) {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Returns a predicate that negates the given one.
+ * @example
+ * const isEven = n => n % 2 === 0;
+ * const isOdd = _.not(isEven);
+ *
+ * isOdd(5) // => true
+ * isOdd(4) // => false
+ *
+ * @memberof module:lamb
+ * @category Logic
+ * @since 0.1.0
+ * @param {Function} predicate
+ * @returns {Function}
+ */
+function not (predicate) {
+    return function () {
+        return !predicate.apply(this, arguments);
+    };
+}
+
+/**
+ * Using the provided iteratee, builds a function that will return an array comprised of the
+ * unique elements of an array-like object. The values being compared are the ones returned by
+ * the iteratee.<br/>
+ * The equality test is made with the ["SameValueZero" comparison]{@link module:lamb.areSVZ|areSVZ}.<br/>
+ * When two values are considered equal, the first occurence will be the one included
+ * in the result array.<br/>
+ * See also {@link module:lamb.uniques|uniques} if you don't need to transform your values before the
+ * comparison.
+ * @example
+ * const data  = [
+ *     {id: "1", name: "John"},
+ *     {id: "4", name: "Jane"},
+ *     {id: "5", name: "Joe"},
+ *     {id: "1", name: "Mario"},
+ *     {id: "5", name: "Paolo"},
+ * ];
+ * const uniquesById = _.uniquesBy(_.getKey("id"));
+ *
+ * uniquesById(data) // => [{id: "1", name: "John"}, {id: "4", name: "Jane"}, {id: "5", name: "Joe"}]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.uniques|uniques}
+ * @since 0.51.0
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Function}
+ */
+function uniquesBy (iteratee) {
+    return function (arrayLike) {
+        var result = [];
+
+        for (var i = 0, len = arrayLike.length, seen = [], value; i < len; i++) {
+            value = iteratee(arrayLike[i], i, arrayLike);
+
+            if (!isIn(seen, value)) {
+                seen.push(value);
+                result.push(arrayLike[i]);
+            }
+        }
+
+        return result;
+    };
+}
+
+/**
+ * Builds an array without the first <code>n</code> elements of the given array or array-like object.
+ * Note that, being this only a shortcut for a specific use case of {@link module:lamb.slice|slice},
+ * <code>n</code> can be a negative number.
+ * @example
+ * const arr = [1, 2, 3, 4, 5];
+ *
+ * _.dropFrom(arr, 2) // => [3, 4, 5]
+ * _.dropFrom(arr, -1) // => [5]
+ * _.dropFrom(arr, -10) // => [1, 2, 3, 4, 5]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.drop|drop}
+ * @see {@link module:lamb.takeFrom|takeFrom}, {@link module:lamb.take|take}
+ * @see {@link module:lamb.takeWhile|takeWhile}, {@link module:lamb.dropWhile|dropWhile}
+ * @see {@link module:lamb.takeLastWhile|takeLastWhile}, {@link module:lamb.dropLastWhile|dropLastWhile}
+ * @since 0.51.0
+ * @param {ArrayLike} arrayLike
+ * @param {Number} n
+ * @returns {Array}
+ */
+function dropFrom (arrayLike, n) {
+    return slice(arrayLike, n, arrayLike.length);
+}
+
+/**
+ * A curried version of {@link module:lamb.dropFrom|dropFrom} that expects the number of elements
+ * to drop to build a function waiting for the list to take the elements from.<br/>
+ * See the note and examples for {@link module:lamb.dropFrom|dropFrom} about passing a
+ * negative <code>n</code>.
+ * @example
+ * const drop2 = _.drop(2);
+ *
+ * drop2([1, 2, 3, 4, 5]) // => [3, 4, 5]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @since 0.5.0
+ * @see {@link module:lamb.dropFrom|dropFrom}
+ * @see {@link module:lamb.takeFrom|takeFrom}, {@link module:lamb.take|take}
+ * @see {@link module:lamb.takeWhile|takeWhile}, {@link module:lamb.dropWhile|dropWhile}
+ * @see {@link module:lamb.takeLastWhile|takeLastWhile}, {@link module:lamb.dropLastWhile|dropLastWhile}
+ * @param {Number} n
+ * @returns {Function}
+ */
+var drop = _curry2(dropFrom, true);
+
+/**
+ * Similar to {@link module:lamb.map|map}, but if the mapping function returns an array this will
+ * be concatenated, rather than pushed, to the final result.
+ * @example <caption>Showing the difference with <code>map</code>:</caption>
+ * const words = ["foo", "bar"];
+ * const toCharArray = _.splitBy("");
+ *
+ * _.map(words, toCharArray) // => [["f", "o", "o"], ["b", "a", "r"]]
+ * _.flatMap(words, toCharArray) // => ["f", "o", "o", "b", "a", "r"]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.flatMapWith|flatMapWith}
+ * @see {@link module:lamb.map|map}, {@link module:lamb.mapWith|mapWith}
+ * @since 0.1.0
+ * @param {Array} array
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Array}
+ */
+function flatMap (array, iteratee) {
+    return reduce(array, function (result, el, idx, arr) {
+        var v = iteratee(el, idx, arr);
+
+        if (!Array.isArray(v)) {
+            v = [v];
+        }
+
+        for (var i = 0, len = v.length, rLen = result.length; i < len; i++) {
+            result[rLen + i] = v[i];
+        }
+
+        return result;
+    }, []);
+}
+
+/**
+ * A curried version of {@link module:lamb.flatMap|flatMap} that uses provided iteratee
+ * to build a function expecting the array to act upon.
+ * @example
+ * const toCharArray = _.splitBy("");
+ * const wordsToCharArray = _.flatMapWith(toCharArray);
+ *
+ * wordsToCharArray(["foo", "bar"]) // => ["f", "o", "o", "b", "a", "r"]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @see {@link module:lamb.flatMap|flatMap}
+ * @see {@link module:lamb.map|map}, {@link module:lamb.mapWith|mapWith}
+ * @since 0.11.0
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Function}
+ */
+var flatMapWith = _curry2(flatMap, true);
+
+/**
+ * Transforms an array-like object into a string by joining its elements with
+ * the given separator.<br/>
+ * Note that unlike the native method, this function won't convert
+ * <code>null</code> and <code>undefined</code> values in the array to empty
+ * strings and that the <code>separator</code> parameter isn't optional.<br/>
+ * See the examples about these differences.
+ * @example
+ * const words = ["foo", "bar", "baz"];
+ *
+ * _.join(words, "-") // => "foo-bar-baz"
+ *
+ * @example <caption>Showing the differences with the native array method:</caption>
+ * const mixed = [1, null, 2, undefined, 3, NaN, 4, 5];
+ * const numbers = [1, 2, 3];
+ *
+ * _.join(mixed, "-") // => "1-null-2-undefined-3-NaN-4-5"
+ * mixed.join("-") // => "1--2--3-NaN-4-5"
+ *
+ * _.join(numbers) // => "1undefined2undefined3"
+ * numbers.join() // => "1,2,3"
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.joinWith|joinWith}
+ * @see {@link module:lamb.split|split}, {@link module:lamb.splitBy|splitBy}
+ * @since 0.58.0
+ * @param {ArrayLike} arrayLike
+ * @param {String} separator
+ * @returns {String}
+ */
+function join (arrayLike, separator) {
+    return map(arrayLike, String).join(String(separator));
+}
+
+/**
+ * A curried version of {@link module:lamb.join|join} that accepts an optional
+ * separator and builds a function expecting the array-like object to act upon.<br/>
+ * Please refer to the description and examples of {@link module:lamb.join|join}
+ * to understand the differences with the native array method.
+ * @example
+ * const words = ["foo", "bar", "baz"];
+ * const joinWithDash = _.joinWith("-");
+ *
+ * joinWithDash(words) // => "foo-bar-baz"
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @see {@link module:lamb.join|join}
+ * @see {@link module:lamb.split|split}, {@link module:lamb.splitBy|splitBy}
+ * @since 0.58.0
+ * @param {String} separator
+ * @returns {Function}
+ */
+var joinWith = _curry2(join, true);
+
+/**
+ * Builds helper functions to extract portions of the arguments
+ * object rather efficiently without having to write for loops
+ * manually for each case.<br/>
+ * The arguments object needs to be passed to the apply method
+ * of the generated function.
+ * @private
+ * @param {Number} idx
+ * @returns {Function}
+ */
+function _argsToArrayFrom (idx) {
+    return function () {
+        var argsLen = arguments.length || idx;
+        var len = argsLen - idx;
+        var result = Array(len);
+
+        for (var i = 0; i < len; i++) {
+            result[i] = arguments[i + idx];
+        }
+
+        return result;
+    };
+}
+
+/**
+ * Generates an array with the values passed as arguments.<br/>
+ * Behaves like ES6's [Array.of]{@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/of}.
+ * @example
+ * _.list(1, 2, 3) // => [1, 2, 3]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @since 0.1.0
+ * @param {...*} value
+ * @returns {Array}
+ */
+var list = _argsToArrayFrom(0);
+
+/**
+ * Builds a TypeError stating that it's not possible to convert the given value to the
+ * desired type.
+ * @private
+ * @param {*} value
+ * @param {String} desiredType
+ * @returns {TypeError}
+ */
+function _makeTypeErrorFor (value, desiredType) {
+    return new TypeError("Cannot convert " + type(value).toLowerCase() + " to " + desiredType);
+}
+
+/**
+ * Creates a pipeline of functions, where each function consumes the result of the previous one.
+ * @example
+ * const square = n => n ** 2;
+ * const getMaxAndSquare = _.pipe([Math.max, square]);
+ *
+ * getMaxAndSquare(3, 5) // => 25
+ *
+ * @memberof module:lamb
+ * @category Function
+ * @function
+ * @see {@link module:lamb.compose|compose}
+ * @since 0.1.0
+ * @param {Function[]} functions
+ * @returns {Function}
+ */
+function pipe (functions) {
+    if (!Array.isArray(functions)) {
+        throw _makeTypeErrorFor(functions, "array");
+    }
+
+    var len = functions.length;
+
+    return len ? function () {
+        var result = functions[0].apply(this, arguments);
+
+        for (var i = 1; i < len; i++) {
+            result = functions[i].call(this, result);
+        }
+
+        return result;
+    } : identity;
+}
+
+/**
+ * Using the provided iteratee to transform values, builds a function that will
+ * return an array of the unique elements  in the two provided array-like objects.<br/>
+ * Uses the ["SameValueZero" comparison]{@link module:lamb.areSVZ|areSVZ}
+ * to test the equality of values.<br/>
+ * When two values are considered equal, the first occurence will be the one included
+ * in the result array.<br/>
+ * See also {@link module:lamb.union|union} if you don't need to compare transformed values.
+ * @example
+ * const unionByFloor = _.unionBy(Math.floor);
+ *
+ * unionByFloor([2.8, 3.2, 1.5], [3.5, 1.2, 4]) // => [2.8, 3.2, 1.5, 4]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @see {@link module:lamb.union|union}
+ * @see {@link module:lamb.difference|difference}
+ * @see {@link module:lamb.intersection|intersection}
+ * @since 0.51.0
+ * @param {ListIteratorCallback} iteratee
+ * @returns {Function}
+ */
+function unionBy (iteratee) {
+    return pipe([binary(list), flatMapWith(drop(0)), uniquesBy(iteratee)]);
+}
+
+/**
+ * Returns a list of every unique element present in the two given array-like objects.<br/>
+ * Uses the ["SameValueZero" comparison]{@link module:lamb.areSVZ|areSVZ}
+ * to test the equality of values.<br/>
+ * When two values are considered equal, the first occurence will be the one included
+ * in the result array.<br/>
+ * See also {@link module:lamb.unionBy|unionBy} if you need to transform the values before
+ * the comparison or if you have to extract them from complex ones.
+ * @example
+ * _.union([1, 2, 3, 2], [2, 3, 4]) // => [1, 2, 3, 4]
+ * _.union("abc", "bcd") // => ["a", "b", "c", "d"]
+ *
+ * @memberof module:lamb
+ * @category Array
+ * @function
+ * @see {@link module:lamb.unionBy|unionBy}
+ * @see {@link module:lamb.difference|difference}
+ * @see {@link module:lamb.intersection|intersection}
+ * @since 0.5.0
+ * @param {ArrayLike} a
+ * @param {ArrayLike} b
+ * @returns {Array}
+ */
+unionBy(identity);
+
+/**
+ * Checks whether the specified key is a own enumerable property of the given object or not.
+ * @private
+ * @function
+ * @param {Object} obj
+ * @param {String} key
+ * @returns {Boolean}
+ */
+generic(Object.prototype.propertyIsEnumerable);
+
+/**
+ * Builds a list of the enumerable properties of an object.
+ * The function is null-safe, unlike the public one.
+ * @private
+ * @param {Object} obj
+ * @returns {String[]}
+ */
+function _safeEnumerables (obj) {
+    var result = [];
+
+    for (var key in obj) {
+        result.push(key);
+    }
+
+    return result;
+}
+
+/**
+ * Creates a non-null-safe version of the provided "getKeys" function.
+ * @private
+ * @function
+ * @param {Function} getKeys
+ * @returns {Function}
+ */
+var _unsafeKeyListFrom = _curry2(function (getKeys, obj) {
+    if (isNil(obj)) {
+        throw _makeTypeErrorFor(obj, "object");
+    }
+
+    return getKeys(obj);
+});
+
+/**
+ * Creates an array with all the enumerable properties of the given object.
+ * @example <caption>Showing the difference with {@link module:lamb.keys|keys}:</caption>
+ * const baseFoo = Object.create({a: 1}, {b: {value: 2}});
+ * const foo = Object.create(baseFoo, {
+ *     c: {value: 3},
+ *     d: {value: 4, enumerable: true}
+ * });
+ *
+ * _.keys(foo) // => ["d"]
+ * _.enumerables(foo) // => ["d", "a"]
+ *
+ * @memberof module:lamb
+ * @category Object
+ * @function
+ * @see {@link module:lamb.keys|keys}
+ * @since 0.12.0
+ * @param {Object} obj
+ * @returns {String[]}
+ */
+var enumerables = _unsafeKeyListFrom(_safeEnumerables);
+
+/**
+ * Verifies if an object has the specified property and that the property isn't inherited through
+ * the prototype chain.<br/>
+ * @example <caption>Comparison with <code>has</code>:</caption>
+ * const user = {name: "john"};
+ *
+ * _.has(user, "name") // => true
+ * _.has(user, "surname") // => false
+ * _.has(user, "toString") // => true
+ *
+ * _.hasOwn(user, "name") // => true
+ * _.hasOwn(user, "surname") // => false
+ * _.hasOwn(user, "toString") // => false
+ *
+ * @memberof module:lamb
+ * @category Object
+ * @function
+ * @see {@link module:lamb.hasOwnKey|hasOwnKey}
+ * @see {@link module:lamb.has|has}, {@link module:lamb.hasKey|hasKey}
+ * @see {@link module:lamb.pathExistsIn|pathExistsIn}, {@link module:lamb.pathExists|pathExists}
+ * @since 0.1.0
+ * @param {Object} obj
+ * @param {String} key
+ * @returns {Boolean}
+ */
+generic(Object.prototype.hasOwnProperty);
+
+/**
+ * Accepts an object and build a function expecting a key to create a "pair" with the key
+ * and its value.
+ * @private
+ * @function
+ * @param {Object} obj
+ * @returns {Function}
+ */
+var _keyToPairIn = _curry2(function (obj, key) {
+    return [key, obj[key]];
+});
+
+/**
+ * Using the provided function to retrieve the keys, builds a new function
+ * expecting an object to create a list of key / value pairs.
+ * @private
+ * @function
+ * @param {Function} getKeys
+ * @returns {Function}
+ */
+var _pairsFrom = _curry2(function (getKeys, obj) {
+    return map(getKeys(obj), _keyToPairIn(obj));
+});
+
+/**
+ * Converts an object into an array of key / value pairs of its enumerable properties.<br/>
+ * See also {@link module:lamb.ownPairs|ownPairs} for picking only the own enumerable
+ * properties and {@link module:lamb.fromPairs|fromPairs} for the reverse operation.
+ * @example
+ * _.pairs({a: 1, b: 2, c: 3}) // => [["a", 1], ["b", 2], ["c", 3]]
+ *
+ * @memberof module:lamb
+ * @category Object
+ * @function
+ * @see {@link module:lamb.ownPairs|ownPairs}
+ * @see {@link module:lamb.fromPairs|fromPairs}
+ * @since 0.8.0
+ * @param {Object} obj
+ * @returns {Array<Array<String, *>>}
+ */
+var pairs = _pairsFrom(enumerables);
+
+/**
+ * Builds a function expecting an object whose enumerable properties will be checked
+ * against the given predicate.<br/>
+ * The properties satisfying the predicate will be included in the resulting object.
+ * @example
+ * const user = {name: "john", surname: "doe", age: 30};
+ * const pickIfIsString = _.pickIf(_.isType("String"));
+ *
+ * pickIfIsString(user) // => {name: "john", surname: "doe"}
+ *
+ * @memberof module:lamb
+ * @category Object
+ * @see {@link module:lamb.pickIn|pickIn}, {@link module:lamb.pick|pick}
+ * @see {@link module:lamb.skipIn|skipIn}, {@link module:lamb.skip|skip},
+ * {@link module:lamb.skipIf|skipIf}
+ * @since 0.1.0
+ * @param {ObjectIteratorCallback} predicate
+ * @returns {Function}
+ */
+function pickIf (predicate) {
+    return function (source) {
+        if (isNil(source)) {
+            throw _makeTypeErrorFor(source, "object");
+        }
+
+        var result = {};
+
+        for (var key in source) {
+            if (predicate(source[key], key, source)) {
+                result[key] = source[key];
+            }
+        }
+
+        return result;
+    };
+}
+
+/**
+ * Builds a function expecting an object whose enumerable properties will be checked
+ * against the given predicate.<br/>
+ * The properties satisfying the predicate will be omitted in the resulting object.
+ * @example
+ * const user = {name: "john", surname: "doe", age: 30};
+ * const skipIfIstring = _.skipIf(_.isType("String"));
+ *
+ * skipIfIstring(user) // => {age: 30}
+ *
+ * @memberof module:lamb
+ * @category Object
+ * @function
+ * @see {@link module:lamb.skipIn|skipIn}, {@link module:lamb.skip|skip}
+ * @see {@link module:lamb.pickIn|pickIn}, {@link module:lamb.pick|pick},
+ * {@link module:lamb.pickIf|pickIf}
+ * @since 0.1.0
+ * @param {ObjectIteratorCallback} predicate
+ * @returns {Function}
+ */
+var skipIf = compose(pickIf, not);
+
+/**
+ * Builds a partial application of [<code>String.prototype.replace</code>]{@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace}
+ * with the given needle and substitution.<br/>
+ * Please refer to MDN docs for more insights and examples.
+ * @example
+ * const htmlString = "<p>Lorem <strong class=\"foo bar\">ipsum dolor</strong> sit amet</p>";
+ * const stripHTML = _.replace(/<[^>]+>/g, "");
+ *
+ * stripHTML(htmlString) // => "Lorem ipsum dolor sit amet"
+ *
+ * @memberof module:lamb
+ * @category String
+ * @function
+ * @see [<code>String.prototype.replace</code>]{@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace} on MDN.
+ * @since 0.60.0
+ * @param {RegExp|String} needle
+ * @param {Function|String} sub
+ * @returns {Function} <code>(haystack: String) => String</code>
+ */
+_makePartial3(generic(String.prototype.replace));
+
+/**
+ * Splits a string into an array of substrings using the given separator.
+ * @example
+ * _.split("Jan,Feb,Mar,Apr,May", ",") // => ["Jan", "Feb", "Mar", "Apr", "May"]
+ * _.split("Jan, Feb , Mar,Apr,   May", /\s*,\s*‍/) // => ["Jan", "Feb", "Mar", "Apr", "May"]
+ *
+ * @memberof module:lamb
+ * @category String
+ * @function
+ * @see {@link module:lamb.splitBy|splitBy}
+ * @see {@link module:lamb.join|join}, {@link module:lamb.joinWith|joinWith}
+ * @since 0.59.0
+ * @param {String} source
+ * @param {String|RegExp} separator
+ * @returns {String[]}
+ */
+binary(generic(String.prototype.split));
+
+/**
+ * A generic version of <code>String.prototype.search</code>
+ * @private
+ * @function
+ * @param {String} s
+ * @param {RegExp} pattern
+ * @returns {Number}
+ */
+generic(String.prototype.search);
+
+/**
+* @module @svizzle/utils/array-string
+*/
+
+/**
+ * Return a string joining the provided array items with a colon
+ * @see {@link https://ascartabelli.github.io/lamb/module-lamb.html#joinWith|joinWith}
+ *
+ * @function
+ * @arg {array} array
+ * @return {string}
+ *
+ * @example
+> joinWithColon(['a', 'b', 'c'])
+'a:b:c'
+ *
+ * @since 0.1.0
+ */
+const joinWithColon = joinWith(':');
+
+/**
+ * Return a string joining the provided array items with a semicolon
+ * @see {@link https://ascartabelli.github.io/lamb/module-lamb.html#joinWith|joinWith}
+ *
+ * @function
+ * @arg {array} array
+ * @return {string}
+ *
+ * @example
+> joinWithSemicolon(['a', 'b', 'c'])
+'a;b;c'
+ *
+ * @since 0.1.0
+ */
+const joinWithSemicolon = joinWith(';');
+
+/**
+* @module @svizzle/utils/string-[string-string]
+*/
+
+/**
+ * Return a function that prepends the provided string to the input string
+ *
+ * @function
+ * @arg {string} prefix - The string to be prepended
+ * @return {function} - String -> String
+ *
+ * @example
+> prefixed = makePrefixed('---')
+> prefixed('A')
+'---A'
+> prefixed('B')
+'---B'
+ *
+ * @since 0.1.0
+ * @see {@link module:@svizzle/utils/string-[string-string].makePostfixed|makePostfixed}
+ */
+const makePrefixed = prefix => string => prefix + string;
+
+/**
+* @module @svizzle/dom/attrs
+*/
+
+/**
+ * Return a style string from an object
+ *
+ * @function
+ * @arg {object} object
+ * @return {string} styleString
+ *
+ * @example
+> makeStyle({color: 'red', 'font-size': '10px'})
+'color:red;font-size:10px'
+ *
+ * @since 0.1.0
+ */
+pipe([
+	skipIf(isNil),
+	pairs,
+	mapWith(joinWithColon),
+	joinWithSemicolon
+]);
+
+/**
+ * Return a style string with hyphenate CSS variables derived from the keys of the expected object
+ *
+ * @function
+ * @arg {object} object
+ * @return {string} styleString
+ *
+ * @example
+> makeStyleVars({foo: 'red', 'bar': '10px'})
+'--foo:red;--bar:10px'
+ *
+ * @since 0.4.0
+ */
+const makeStyleVars = pipe([
+	skipIf(isNil),
+	pairs,
+	mapWith(pipe([joinWithColon, makePrefixed('--')])),
+	joinWithSemicolon
+]);
+
+/* src/lib/components/svizzle/Banner.svelte generated by Svelte v3.51.0 */
+
+function add_css$1(target) {
+	append_styles(target, "svelte-1jfktzp", ".Banner.svelte-1jfktzp.svelte-1jfktzp{box-shadow:2px 8px 9px -4px var(--colorBoxShadow);height:100%;left:0;position:absolute;top:0;user-select:none;width:100%;z-index:2000}.Banner.backdrop.svelte-1jfktzp.svelte-1jfktzp{background-color:var(--colorBackdropSensor)}.inner.svelte-1jfktzp.svelte-1jfktzp{background:var(--colorBackground);border:var(--border);border-radius:1rem;box-shadow:2px 8px 9px -4px var(--colorBoxShadow);color:var(--colorText);cursor:initial;display:grid;grid-template-rows:1fr;left:50%;max-height:90%;padding:0.5rem;position:absolute;overflow:auto;top:50%;transform:translate(-50%, -50%);width:90%}.medium.svelte-1jfktzp .inner.svelte-1jfktzp{min-width:50%}.medium.svelte-1jfktzp .narrow.svelte-1jfktzp{width:min-content}");
+}
+
+function create_fragment$1(ctx) {
+	let div1;
+	let div0;
+	let div1_class_value;
+	let current;
+	let mounted;
+	let dispose;
+	const default_slot_template = /*#slots*/ ctx[9].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[8], null);
+
+	return {
+		c() {
+			div1 = element$2("div");
+			div0 = element$2("div");
+			if (default_slot) default_slot.c();
+			attr$6(div0, "class", "inner svelte-1jfktzp");
+			toggle_class(div0, "narrow", /*isNarrow*/ ctx[2]);
+			attr$6(div1, "style", /*style*/ ctx[3]);
+			attr$6(div1, "aria-label", "Banner");
+			attr$6(div1, "class", div1_class_value = "Banner clickable " + /*$_screen*/ ctx[4]?.classes + " svelte-1jfktzp");
+			attr$6(div1, "role", "alert");
+			toggle_class(div1, "backdrop", /*hasBackdrop*/ ctx[1]);
+		},
+		m(target, anchor) {
+			insert$2(target, div1, anchor);
+			append(div1, div0);
+
+			if (default_slot) {
+				default_slot.m(div0, null);
+			}
+
+			current = true;
+
+			if (!mounted) {
+				dispose = [
+					listen(window, "keydown", /*onKeyDown*/ ctx[6]),
+					listen(div0, "click", stop_propagation(/*click_handler*/ ctx[10])),
+					listen(div1, "click", /*close*/ ctx[5])
+				];
+
+				mounted = true;
+			}
+		},
+		p(ctx, [dirty]) {
+			if (default_slot) {
+				if (default_slot.p && (!current || dirty & /*$$scope*/ 256)) {
+					update_slot_base(
+						default_slot,
+						default_slot_template,
+						ctx,
+						/*$$scope*/ ctx[8],
+						!current
+						? get_all_dirty_from_scope(/*$$scope*/ ctx[8])
+						: get_slot_changes(default_slot_template, /*$$scope*/ ctx[8], dirty, null),
+						null
+					);
+				}
+			}
+
+			if (!current || dirty & /*isNarrow*/ 4) {
+				toggle_class(div0, "narrow", /*isNarrow*/ ctx[2]);
+			}
+
+			if (!current || dirty & /*style*/ 8) {
+				attr$6(div1, "style", /*style*/ ctx[3]);
+			}
+
+			if (!current || dirty & /*$_screen*/ 16 && div1_class_value !== (div1_class_value = "Banner clickable " + /*$_screen*/ ctx[4]?.classes + " svelte-1jfktzp")) {
+				attr$6(div1, "class", div1_class_value);
+			}
+
+			if (!current || dirty & /*$_screen, hasBackdrop*/ 18) {
+				toggle_class(div1, "backdrop", /*hasBackdrop*/ ctx[1]);
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (detaching) detach(div1);
+			if (default_slot) default_slot.d(detaching);
+			mounted = false;
+			run_all(dispose);
+		}
+	};
+}
+
+function instance$1($$self, $$props, $$invalidate) {
+	let style;
+
+	let $_screen,
+		$$unsubscribe__screen = noop$5,
+		$$subscribe__screen = () => ($$unsubscribe__screen(), $$unsubscribe__screen = subscribe(_screen, $$value => $$invalidate(4, $_screen = $$value)), _screen);
+
+	$$self.$$.on_destroy.push(() => $$unsubscribe__screen());
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	const defaultTheme = {
+		border: 'thin solid rgb(70, 70, 70)',
+		colorBackdropSensor: 'rgba(0, 0, 0, 0.25)',
+		colorBackground: 'white',
+		colorBoxShadow: 'lightgrey',
+		colorText: 'black'
+	};
+
+	let { _screen } = $$props;
+	$$subscribe__screen();
+	let { hasBackdrop = true } = $$props;
+	let { isNarrow = true } = $$props;
+	let { theme = defaultTheme } = $$props;
+	const dispatch = createEventDispatcher();
+	const close = () => dispatch('close');
+
+	const onKeyDown = event => {
+		if (event.keyCode === 27) {
+			event.preventDefault();
+			close();
+		}
+	};
+
+	function click_handler(event) {
+		bubble.call(this, $$self, event);
+	}
+
+	$$self.$$set = $$props => {
+		if ('_screen' in $$props) $$subscribe__screen($$invalidate(0, _screen = $$props._screen));
+		if ('hasBackdrop' in $$props) $$invalidate(1, hasBackdrop = $$props.hasBackdrop);
+		if ('isNarrow' in $$props) $$invalidate(2, isNarrow = $$props.isNarrow);
+		if ('theme' in $$props) $$invalidate(7, theme = $$props.theme);
+		if ('$$scope' in $$props) $$invalidate(8, $$scope = $$props.$$scope);
+	};
+
+	$$self.$$.update = () => {
+		if ($$self.$$.dirty & /*theme*/ 128) {
+			$$invalidate(7, theme = theme ? { ...defaultTheme, ...theme } : defaultTheme);
+		}
+
+		if ($$self.$$.dirty & /*theme*/ 128) {
+			$$invalidate(3, style = makeStyleVars(theme));
+		}
+	};
+
+	return [
+		_screen,
+		hasBackdrop,
+		isNarrow,
+		style,
+		$_screen,
+		close,
+		onKeyDown,
+		theme,
+		$$scope,
+		slots,
+		click_handler
+	];
+}
+
+class Banner extends SvelteComponent {
+	constructor(options) {
+		super();
+
+		init$1(
+			this,
+			options,
+			instance$1,
+			create_fragment$1,
+			safe_not_equal,
+			{
+				_screen: 0,
+				hasBackdrop: 1,
+				isNarrow: 2,
+				theme: 7
+			},
+			add_css$1
+		);
 	}
 }
 
 /* src/lib/components/slides/Slide2.svelte generated by Svelte v3.51.0 */
 
 function add_css(target) {
-	append_styles(target, "svelte-1jhjnkc", "div.svelte-1jhjnkc{font-family:sans-serif;width:800px;display:grid;grid-template-columns:50% 50%}");
+	append_styles(target, "svelte-b5l3x3", "div.svelte-b5l3x3{font-family:sans-serif;width:800px;display:grid;grid-template-columns:50% 50%;align-items:flex-start}");
+}
+
+// (82:1) {#if spec}
+function create_if_block(ctx) {
+	let banner;
+	let current;
+
+	banner = new Banner({
+			props: {
+				$$slots: { default: [create_default_slot] },
+				$$scope: { ctx }
+			}
+		});
+
+	banner.$on("close", /*close_handler*/ ctx[3]);
+
+	return {
+		c() {
+			create_component(banner.$$.fragment);
+		},
+		m(target, anchor) {
+			mount_component(banner, target, anchor);
+			current = true;
+		},
+		p(ctx, dirty) {
+			const banner_changes = {};
+
+			if (dirty & /*$$scope, spec*/ 514) {
+				banner_changes.$$scope = { dirty, ctx };
+			}
+
+			banner.$set(banner_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(banner.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(banner.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(banner, detaching);
+		}
+	};
+}
+
+// (83:2) <Banner    on:close={() => spec = null}   >
+function create_default_slot(ctx) {
+	let vegalite;
+	let current;
+	vegalite = new VegaLite$1({ props: { spec: /*spec*/ ctx[1] } });
+
+	return {
+		c() {
+			create_component(vegalite.$$.fragment);
+		},
+		m(target, anchor) {
+			mount_component(vegalite, target, anchor);
+			current = true;
+		},
+		p(ctx, dirty) {
+			const vegalite_changes = {};
+			if (dirty & /*spec*/ 2) vegalite_changes.spec = /*spec*/ ctx[1];
+			vegalite.$set(vegalite_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(vegalite.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(vegalite.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(vegalite, detaching);
+		}
+	};
 }
 
 function create_fragment(ctx) {
 	let div;
 	let heatgrid;
+	let t;
 	let current;
 
 	heatgrid = new HeatGrid({
 			props: {
 				columnHeaders: ['col1', 'col2', 'col3', 'col4'],
-				rowHeaders: ['row 1', 'row 2', 'row 3', 'row 4', 'row 5'],
-				data: [[1, 2, 3, 0], [2, 3, 0, 1], [3, 0, 1, 2], [0, 1, 2, 3], [1, 2, 3, 0]],
-				colorMap: ['silver', 'cyan', 'yellow', 'red']
+				rowHeaders: [
+					'row 1',
+					'row 2',
+					'row 3',
+					'row 4',
+					'row 5',
+					'row 6',
+					'row 7',
+					'row 8',
+					'row 9',
+					'row 10'
+				],
+				data: [
+					[0, 1, 2, 3],
+					[1, 2, 3, 0],
+					[2, 3, 0, 1],
+					[3, 0, 1, 2],
+					[0, 1, 2, 3],
+					[1, 2, 3, 0],
+					[2, 3, 0, 1],
+					[3, 0, 1, 2],
+					[0, 1, 2, 3],
+					[1, 2, 3, 0]
+				],
+				colorMap: ['silver', 'cyan', 'yellow', 'red'],
+				useClick: true
 			}
 		});
 
-	heatgrid.$on("pointhovered", /*pointhovered_handler*/ ctx[1]);
+	heatgrid.$on("pointhovered", /*pointhovered_handler*/ ctx[2]);
+	let if_block = /*spec*/ ctx[1] && create_if_block(ctx);
 
 	return {
 		c() {
 			div = element$2("div");
 			create_component(heatgrid.$$.fragment);
-			attr$6(div, "class", "svelte-1jhjnkc");
+			t = space();
+			if (if_block) if_block.c();
+			attr$6(div, "class", "svelte-b5l3x3");
 		},
 		m(target, anchor) {
 			insert$2(target, div, anchor);
 			mount_component(heatgrid, div, null);
+			append(div, t);
+			if (if_block) if_block.m(div, null);
 			current = true;
 		},
-		p: noop$5,
+		p(ctx, [dirty]) {
+			if (/*spec*/ ctx[1]) {
+				if (if_block) {
+					if_block.p(ctx, dirty);
+
+					if (dirty & /*spec*/ 2) {
+						transition_in(if_block, 1);
+					}
+				} else {
+					if_block = create_if_block(ctx);
+					if_block.c();
+					transition_in(if_block, 1);
+					if_block.m(div, null);
+				}
+			} else if (if_block) {
+				group_outros();
+
+				transition_out(if_block, 1, 1, () => {
+					if_block = null;
+				});
+
+				check_outros();
+			}
+		},
 		i(local) {
 			if (current) return;
 			transition_in(heatgrid.$$.fragment, local);
+			transition_in(if_block);
 			current = true;
 		},
 		o(local) {
 			transition_out(heatgrid.$$.fragment, local);
+			transition_out(if_block);
 			current = false;
 		},
 		d(detaching) {
 			if (detaching) detach(div);
 			destroy_component(heatgrid);
+			if (if_block) if_block.d();
 		}
 	};
 }
 
-const chart1 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/v2022_10_14_Heat_map.html';
-const chart2 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_bar_chart.html';
-const chart3 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_magnitude_vs_growth.html';
-
 function instance($$self, $$props, $$invalidate) {
+	const chart1 = test_bar_chart;
+	const chart2 = test_magnitude_vs_growth;
+	const chart3 = v2022_10_14_Heat_map;
+
 	const URLs = [
 		[chart1, chart2, chart3, chart1],
 		[chart2, chart3, chart1, chart2],
@@ -71759,6 +73511,7 @@ function instance($$self, $$props, $$invalidate) {
 		[chart1, chart2, chart3, chart1]
 	];
 	let datapoint;
+	let spec;
 
 	onMount(() => {
 		console.log('posting...');
@@ -71777,6 +73530,7 @@ function instance($$self, $$props, $$invalidate) {
 	});
 
 	const pointhovered_handler = ({ detail }) => $$invalidate(0, datapoint = detail);
+	const close_handler = () => $$invalidate(1, spec = null);
 
 	$$self.$$.update = () => {
 		if ($$self.$$.dirty & /*datapoint*/ 1) {
@@ -71793,9 +73547,13 @@ function instance($$self, $$props, $$invalidate) {
 		if ($$self.$$.dirty & /*datapoint*/ 1) {
 			datapoint && console.log(datapoint, URLs[datapoint.i][datapoint.j]);
 		}
+
+		if ($$self.$$.dirty & /*datapoint*/ 1) {
+			datapoint && $$invalidate(1, spec = URLs[datapoint.i][datapoint.j]);
+		}
 	};
 
-	return [datapoint, pointhovered_handler];
+	return [datapoint, spec, pointhovered_handler, close_handler];
 }
 
 class Slide2 extends SvelteComponent {
