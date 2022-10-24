@@ -1,11 +1,13 @@
 <script>
 	import {onMount} from 'svelte';
+	import {VegaLite} from "svelte-vega";
 
 	import HeatGrid from '../charts/HeatGrid.svelte';
+	import * as specs from '../../data/vegaCharts';
 
-	const chart1 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/v2022_10_14_Heat_map.html';
-	const chart2 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_bar_chart.html';
-	const chart3 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_magnitude_vs_growth.html';
+	const chart1 = specs.test_bar_chart;
+	const chart2 = specs.test_magnitude_vs_growth;
+	const chart3 = specs.v2022_10_14_Heat_map;
 
 	const URLs = [
 		[chart1, chart2, chart3, chart1],
@@ -21,7 +23,8 @@
 	];
 
 	let message;
-	let datapoint
+	let datapoint;
+	let spec;
 
 	onMount( () => {
 		console.log('posting...')
@@ -47,6 +50,7 @@
 	}, '*')
 
 	$: datapoint && console.log(datapoint, URLs[datapoint.i][datapoint.j])
+	$: datapoint && (spec = URLs[datapoint.i][datapoint.j])
 </script>
 
 <div>
@@ -73,6 +77,11 @@
 		]}
 		on:pointhovered={({detail}) => datapoint = detail}
 	/>
+	{#if spec}
+		<VegaLite
+			{spec}
+		/>
+	{/if}
 </div>
 
 <style>
@@ -81,5 +90,6 @@
 		width: 800px;
 		display: grid;
 		grid-template-columns: 50% 50%;
+		align-items: flex-start;
 	}
 </style>

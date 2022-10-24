@@ -1,5 +1,6 @@
 import svelte from 'rollup-plugin-svelte'
 import commonjs from '@rollup/plugin-commonjs'
+import json from '@rollup/plugin-json';
 import resolve from '@rollup/plugin-node-resolve'
 
 const production = !process.env.ROLLUP_WATCH
@@ -24,6 +25,7 @@ export default {
 			browser: true,
 			dedupe: ['svelte'],
 		}),
+		json(),
 		commonjs(),
 	],
 }
