@@ -52,7 +52,7 @@
 <div>
 	<HeatGrid
 		columnHeaders={['col1', 'col2', 'col3', 'col4']}
-		rowHeaders={['row 1', 'row 2', 'row 3', 'row 4', 'row 5', 'row 6', 'row 7', 'row 8', 'row 9', 'row 10']}
+		rowHeaders={['row 1', 'row 2', 'row 3', 'row 4', 'row 5']}
 		data={[
 			[1, 2, 3, 0],
 			[2, 3, 0, 1],
