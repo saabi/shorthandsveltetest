@@ -4,14 +4,12 @@ import resolve from '@rollup/plugin-node-resolve'
 
 const production = !process.env.ROLLUP_WATCH
 
-const cmp = 'slides';
-
 export default {
-	input: `src/lib/components/${cmp}.js`,
+	input: `src/lib/index.js`,
 
 	output: {
 		format: 'es',
-		file: `static/js/${cmp}.js`,
+		file: `static/js/index.js`,
 		sourcemap: true,
 	},
 
