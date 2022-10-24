@@ -6,7 +6,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"build1": "rollup --config rollup.config.Slide1.js --configTarget Bar"
+		"buildSlides": "rollup --config rollup.config.Slides.js"
 	},
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^23.0.1",
@@ -20,6 +20,7 @@
 	"type": "module",
 	"dependencies": {
 		"rollup": "^3.2.3",
-		"rollup-plugin-svelte": "^7.1.0"
+		"rollup-plugin-svelte": "^7.1.0",
+		"svelte-vega": "^1.1.1"
 	}
 }

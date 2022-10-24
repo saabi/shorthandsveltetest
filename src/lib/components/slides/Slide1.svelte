@@ -1,7 +1,7 @@
 <script>
 	import {onMount} from 'svelte';
 
-	import HeatGrid from './HeatGrid.svelte';
+	import HeatGrid from '../charts/HeatGrid.svelte';
 
 	const chart1 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/v2022_10_14_Heat_map.html';
 	const chart2 = 'https://discovery-hub-open-data.s3.eu-west-2.amazonaws.com/foodtech/test/test_bar_chart.html';
@@ -81,9 +81,5 @@
 		width: 800px;
 		display: grid;
 		grid-template-columns: 50% 50%;
-	}
-	pre {
-		background: #eee;
-		border: thin solid silver;
 	}
 </style>
